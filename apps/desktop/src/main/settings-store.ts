@@ -10,7 +10,7 @@ import {
   writeFileSync
 } from 'node:fs';
 import { dirname, join } from 'node:path';
-import type { AppSettings } from '../shared/contracts';
+import type { AppSettings, AppSettingsPatch, RoonEndpoint } from '../shared/contracts';
 import { DEFAULT_SETTINGS, sanitizeSettings } from './defaults';
 
 function atomicWrite(path: string, data: string | Buffer): void {
@@ -24,6 +24,7 @@ function atomicWrite(path: string, data: string | Buffer): void {
 export class SettingsStore {
   private readonly settingsPath = join(app.getPath('userData'), 'settings.json');
   private readonly roonStatePath = join(app.getPath('userData'), 'roon-state.bin');
+  private readonly roonEndpointPath = join(app.getPath('userData'), 'roon-endpoint.bin');
   private settings: AppSettings = { ...DEFAULT_SETTINGS };
 
   load(): AppSettings {
@@ -41,8 +42,8 @@ export class SettingsStore {
     return { ...this.settings };
   }
 
-  update(patch: Partial<AppSettings>): AppSettings {
-    this.settings = sanitizeSettings({ ...this.settings, ...patch, schemaVersion: 1 });
+  update(patch: AppSettingsPatch): AppSettings {
+    this.settings = sanitizeSettings({ ...this.settings, ...patch, schemaVersion: 2 });
     atomicWrite(this.settingsPath, `${JSON.stringify(this.settings, null, 2)}\n`);
     return this.get();
   }
@@ -73,6 +74,45 @@ export class SettingsStore {
     atomicWrite(this.roonStatePath, safeStorage.encryptString(JSON.stringify(state)));
   }
 
+  getLastRoonEndpoint(): RoonEndpoint | undefined {
+    if (!existsSync(this.roonEndpointPath) || !safeStorage.isEncryptionAvailable())
+      return undefined;
+    try {
+      const encrypted = readFileSync(this.roonEndpointPath);
+      const value: unknown = JSON.parse(safeStorage.decryptString(encrypted));
+      if (!value || typeof value !== 'object') return undefined;
+      const { host, port } = value as Record<string, unknown>;
+      return typeof host === 'string' &&
+        host.length > 0 &&
+        host.length <= 253 &&
+        typeof port === 'number' &&
+        Number.isInteger(port) &&
+        port >= 1 &&
+        port <= 65_535
+        ? { host, port }
+        : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  setLastRoonEndpoint(endpoint: RoonEndpoint): void {
+    if (!safeStorage.isEncryptionAvailable()) return;
+    if (
+      !endpoint.host ||
+      endpoint.host.length > 253 ||
+      !Number.isInteger(endpoint.port) ||
+      endpoint.port < 1 ||
+      endpoint.port > 65_535
+    ) {
+      throw new Error('Invalid Roon endpoint');
+    }
+    atomicWrite(
+      this.roonEndpointPath,
+      safeStorage.encryptString(JSON.stringify({ host: endpoint.host, port: endpoint.port }))
+    );
+  }
+
   forgetRoonState(): void {
     // Missing state is already forgotten; real filesystem failures should reach diagnostics/UI.
     if (existsSync(this.roonStatePath)) unlinkSync(this.roonStatePath);
@@ -80,6 +120,7 @@ export class SettingsStore {
 
   forgetRoonConnection(): AppSettings {
     this.forgetRoonState();
+    if (existsSync(this.roonEndpointPath)) unlinkSync(this.roonEndpointPath);
     const next = { ...this.settings };
     delete next.manualRoonHost;
     delete next.manualRoonPort;

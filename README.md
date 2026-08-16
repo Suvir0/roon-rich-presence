@@ -8,7 +8,7 @@ This is an independent project. It is not affiliated with Roon Labs or Discord.
 
 ## Current status
 
-macOS, Windows, and Linux packages are beta releases. The macOS build is ad-hoc signed so it can run, but it is not signed with an Apple Developer ID or notarized. macOS will show a security warning on first launch.
+macOS, Windows, and Linux packages are currently a private beta for repository collaborators. The macOS build is ad-hoc signed so it can run, but it is not signed with an Apple Developer ID or notarized. macOS will show a security warning on first launch.
 
 ## What it does
 
@@ -23,7 +23,7 @@ macOS, Windows, and Linux packages are beta releases. The macOS build is ad-hoc 
 
 ## Install
 
-Official downloads will be attached to the [GitHub Releases page](https://github.com/Suvir0/roon-rich-presence/releases).
+Private-beta downloads are attached to the [GitHub Releases page](https://github.com/Suvir0/roon-rich-presence/releases) and are available only to repository collaborators.
 
 ### macOS beta
 
@@ -37,6 +37,10 @@ Official downloads will be attached to the [GitHub Releases page](https://github
 8. Return to the app, choose a playback zone, and finish setup.
 
 Only download the beta from this repository and compare it with the published checksum. Automatic updates are disabled for unsigned beta builds, so install new versions manually from GitHub Releases.
+
+The Local Network prompt is a best-effort mitigation in this ad-hoc-signed beta. Apple recommends a stable Apple-issued signing identity for reliable Local Network privacy tracking, so macOS may not retain or re-prompt for access across unsigned builds. If Roon discovery stops after an update, open **System Settings > Privacy & Security > Local Network**, turn on **Roon Rich Presence**, quit the app completely, and reopen it. macOS does not provide a supported `tccutil` reset for Local Network access.
+
+If automatic discovery still cannot reach the server, enter the Roon Server host and press **Save and Connect**. A host-only connection tries directed discovery first, then a bounded fallback over local Roon API ports. If you know the exact advertised API port, enter it under **Advanced** to connect directly; this is the preferred manual option. Editing the fields alone does not start a connection.
 
 The app stays available in the menu bar after you close its window. Click the waveform icon to change the active zone, turn Discord sharing on or off, reopen the dashboard, or quit.
 
@@ -230,7 +234,7 @@ Enable the following where they are available:
 5. Commit the release and create a signed `vX.Y.Z` tag.
 6. Push the commit and tag.
 7. Create an empty draft GitHub Release for that exact tag.
-8. Run the **Release** workflow manually and enter the same tag.
+8. Dispatch the **Release** workflow on the tag itself with `gh workflow run release.yml --ref vX.Y.Z -f tag=vX.Y.Z`. The GitHub web form only offers a branch selector, so it cannot satisfy the workflow's tag-ref guard.
 9. Download the generated artifacts and verify the expected beta signing state, checksums, SBOM, and provenance from a clean machine.
 10. Publish the draft release only after the smoke tests pass.
 

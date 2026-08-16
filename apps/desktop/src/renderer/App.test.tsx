@@ -3,12 +3,13 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { AppSnapshot } from '../shared/contracts';
 import App from './App';
 
 const snapshot = (onboardingComplete: boolean) => ({
   version: '0.1.0',
   settings: {
-    schemaVersion: 1 as const,
+    schemaVersion: 2 as const,
     presenceEnabled: true,
     zoneMode: 'selected' as const,
     selectedZoneId: 'living-room',
@@ -59,10 +60,21 @@ function installApi(onboardingComplete: boolean) {
     completeOnboarding,
     forgetRoon,
     copyDiagnostics: vi.fn().mockResolvedValue(true),
+    openLocalNetworkSettings: vi.fn().mockResolvedValue(true),
     openExternal: vi.fn().mockResolvedValue(true),
     subscribe: vi.fn().mockReturnValue(() => undefined)
   };
   return { updateSettings, completeOnboarding, forgetRoon };
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((onResolve, onReject) => {
+    resolve = onResolve;
+    reject = onReject;
+  });
+  return { promise, resolve, reject };
 }
 
 let container: HTMLDivElement;
@@ -109,6 +121,14 @@ async function click(element: HTMLElement) {
   await act(async () => element.click());
 }
 
+async function input(element: HTMLInputElement, value: string) {
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+    setter?.call(element, value);
+    element.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+}
+
 describe('renderer experience', () => {
   it('guides the user through all four onboarding stages', async () => {
     const { completeOnboarding } = installApi(false);
@@ -135,12 +155,91 @@ describe('renderer experience', () => {
     await click(button(/continue/i));
 
     await click(button(/manual address/i));
-    expect(container.querySelector('input[aria-label="Roon Server host"]')).toBeTruthy();
-    expect(container.textContent).toContain('Use this only when local discovery is blocked');
+    const host = container.querySelector<HTMLInputElement>('input[aria-label="Roon Server host"]');
+    expect(host).toBeTruthy();
+    expect(container.textContent).toContain('Use this when automatic discovery is blocked');
+    expect(updateSettings).not.toHaveBeenCalled();
+
+    await input(host!, '192.168.50.2');
+    await click(button(/save and connect/i));
+    expect(updateSettings).toHaveBeenCalledTimes(1);
+    expect(updateSettings).toHaveBeenLastCalledWith({
+      manualRoonHost: '192.168.50.2',
+      manualRoonPort: null
+    });
 
     await click(button(/automatic discovery/i));
-    expect(updateSettings).toHaveBeenCalledWith({ manualRoonHost: '' });
+    expect(updateSettings).toHaveBeenLastCalledWith({
+      manualRoonHost: '',
+      manualRoonPort: null
+    });
     expect(container.querySelector('input[aria-label="Roon Server host"]')).toBeFalsy();
+  });
+
+  it('shows an actionable Local Network recovery state', async () => {
+    installApi(true);
+    window.rrp!.getSnapshot = vi.fn().mockResolvedValue({
+      ...snapshot(true),
+      roon: {
+        status: 'error' as const,
+        reason: 'local-network-blocked' as const,
+        message: 'Local Network access is blocked'
+      }
+    });
+    await renderApp();
+    await click(button(/^settings$/i));
+
+    expect(container.textContent).toContain('Local Network access is blocked');
+    await click(button(/open local network settings/i));
+    expect(window.rrp!.openLocalNetworkSettings).toHaveBeenCalledOnce();
+  });
+
+  it('synchronizes a saved manual form after an authoritative forget', async () => {
+    installApi(true);
+    let publish: ((value: AppSnapshot) => void) | undefined;
+    const initial = {
+      ...snapshot(true),
+      settings: {
+        ...snapshot(true).settings,
+        manualRoonHost: '192.168.50.2',
+        manualRoonPort: 9331
+      }
+    };
+    window.rrp!.getSnapshot = vi.fn().mockResolvedValue(initial);
+    window.rrp!.subscribe = vi.fn((callback) => {
+      publish = callback;
+      return () => undefined;
+    });
+    await renderApp();
+    await click(button(/^settings$/i));
+    expect(
+      container.querySelector<HTMLInputElement>('input[aria-label="Roon Server host"]')?.value
+    ).toBe('192.168.50.2');
+
+    await act(async () => publish?.(snapshot(true)));
+    expect(container.querySelector('input[aria-label="Roon Server host"]')).toBeFalsy();
+  });
+
+  it('does not overwrite active manual edits when an authoritative snapshot changes', async () => {
+    installApi(true);
+    let publish: ((value: AppSnapshot) => void) | undefined;
+    const initial = {
+      ...snapshot(true),
+      settings: { ...snapshot(true).settings, manualRoonHost: '192.168.50.2' }
+    };
+    window.rrp!.getSnapshot = vi.fn().mockResolvedValue(initial);
+    window.rrp!.subscribe = vi.fn((callback) => {
+      publish = callback;
+      return () => undefined;
+    });
+    await renderApp();
+    await click(button(/^settings$/i));
+    const host = container.querySelector<HTMLInputElement>('input[aria-label="Roon Server host"]')!;
+    await input(host, 'edited.local');
+
+    await act(async () => publish?.(snapshot(true)));
+    expect(host.value).toBe('edited.local');
+    expect(container.querySelector('input[aria-label="Roon Server host"]')).toBe(host);
   });
 
   it('renders playback and persists dashboard toggles', async () => {
@@ -201,6 +300,69 @@ describe('renderer experience', () => {
 
     expect(albumToggle!.checked).toBe(true);
     expect(container.textContent).toContain('previous choice was restored');
+  });
+
+  it('ignores an older settings response that resolves after a newer update', async () => {
+    const { updateSettings } = installApi(true);
+    const first = deferred<ReturnType<typeof snapshot>>();
+    const second = deferred<ReturnType<typeof snapshot>>();
+    updateSettings
+      .mockImplementationOnce(() => first.promise)
+      .mockImplementationOnce(() => second.promise);
+    await renderApp();
+
+    const album = [...container.querySelectorAll('label')]
+      .find((label) => label.textContent?.includes('Album'))!
+      .querySelector('input')!;
+    const zone = [...container.querySelectorAll('label')]
+      .find((label) => label.textContent?.includes('Zone'))!
+      .querySelector('input')!;
+    await click(album);
+    await click(zone);
+
+    second.resolve({
+      ...snapshot(true),
+      settings: { ...snapshot(true).settings, showAlbum: false, showZone: false }
+    });
+    await act(async () => second.promise);
+    first.resolve({
+      ...snapshot(true),
+      settings: { ...snapshot(true).settings, showAlbum: false, showZone: true }
+    });
+    await act(async () => first.promise);
+
+    expect(album.checked).toBe(false);
+    expect(zone.checked).toBe(false);
+  });
+
+  it('ignores an older settings rejection after a newer update succeeds', async () => {
+    const { updateSettings } = installApi(true);
+    const first = deferred<ReturnType<typeof snapshot>>();
+    const second = deferred<ReturnType<typeof snapshot>>();
+    updateSettings
+      .mockImplementationOnce(() => first.promise)
+      .mockImplementationOnce(() => second.promise);
+    await renderApp();
+    const album = [...container.querySelectorAll('label')]
+      .find((label) => label.textContent?.includes('Album'))!
+      .querySelector('input')!;
+    const zone = [...container.querySelectorAll('label')]
+      .find((label) => label.textContent?.includes('Zone'))!
+      .querySelector('input')!;
+    await click(album);
+    await click(zone);
+
+    second.resolve({
+      ...snapshot(true),
+      settings: { ...snapshot(true).settings, showAlbum: false, showZone: false }
+    });
+    await act(async () => second.promise);
+    first.reject(new Error('older write failed'));
+    await act(async () => first.promise.catch(() => undefined));
+
+    expect(album.checked).toBe(false);
+    expect(zone.checked).toBe(false);
+    expect(container.textContent).not.toContain('previous choice was restored');
   });
 
   it('stays in onboarding when completion cannot be persisted', async () => {

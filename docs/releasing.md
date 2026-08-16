@@ -2,6 +2,8 @@
 
 macOS universal, Windows x64, and Linux x64 (`AppImage` and `.deb`) are beta channels. The macOS beta is ad-hoc signed so it can run, but it is not Developer ID signed or notarized. Flatpak and Snap are not produced because their sandboxes can hide Discord IPC. Linux support also depends on the Social SDK's current experimental platform support.
 
+The macOS beta includes a best-effort Local Network permission prompt before Roon discovery begins. Because the app is ad-hoc signed, it does not have the stable Apple-issued signing identity that macOS recommends for reliable Local Network privacy tracking across builds. If discovery stops after an update, turn **Roon Rich Presence** on in **System Settings > Privacy & Security > Local Network**, quit the app completely, and reopen it. Do not recommend `tccutil`: macOS does not provide a supported command that resets Local Network privacy to its undetermined state. Use a new macOS user account or a VM restored to a pre-install snapshot to retest the first-launch prompt.
+
 ## One-time prerequisites
 
 - Confirm the application identity, repository, publisher, support contact, and icons before the first public release. These values are currently frozen for `Suvir0/roon-rich-presence` and `io.github.suvir0.roon-rich-presence`; changing the Roon extension ID after release requires users to authorize it again.
@@ -35,7 +37,7 @@ This local path is the supported route for the ad-hoc-signed macOS beta when no 
 3. Test a production bridge against the exact checksummed SDK on each target. The bridge must report `mode=discord-social-sdk`; abort if it reports `stub`.
 4. Complete `docs/manual-test-matrix.md` using a real Roon Server and Discord Stable/PTB/Canary where available. Record the expected Gatekeeper warning and approve beta exceptions explicitly for every platform.
 5. Create and push a signed, protected `vX.Y.Z` tag, then create draft GitHub release notes for that tag.
-6. Run the **Release** workflow manually with the exact tag. Protected jobs verify that the input is an existing `vX.Y.Z` tag at the checked-out commit, validate version consistency, download and verify the SDK, compile and preflight a production-mode bridge, restore native executable permissions, package beta installers, generate checksums and an SBOM, attest an explicit allowlist of artifacts, and upload them to an empty draft release.
+6. Dispatch the **Release** workflow on the tag itself with `gh workflow run release.yml --ref vX.Y.Z -f tag=vX.Y.Z`. The GitHub web form only offers a branch selector and cannot satisfy the workflow's tag-ref guard. Protected jobs reject branch dispatches and mismatched dispatch/input tags, validate version consistency, download and verify the SDK, compile and preflight a production-mode bridge, restore native executable permissions, package beta installers, generate checksums and an SBOM, attest an explicit allowlist of artifacts, and upload them to an empty draft release.
 7. Verify the macOS app is ad-hoc signed and not notarized. Compare every artifact against `SHA256SUMS.txt`, inspect the SBOM, install each package, and repeat the short smoke section of the manual matrix.
 8. Publish the GitHub release. Mark every platform asset as beta in filenames and release notes. Automatic updates remain disabled until macOS has a stable Developer ID signing identity.
 

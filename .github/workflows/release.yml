@@ -28,8 +28,12 @@ jobs:
         shell: bash
         env:
           RELEASE_TAG: ${{ inputs.tag }}
+          DISPATCH_REF_TYPE: ${{ github.ref_type }}
+          DISPATCH_REF_NAME: ${{ github.ref_name }}
         run: |
           [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          test "$DISPATCH_REF_TYPE" = "tag"
+          test "$DISPATCH_REF_NAME" = "$RELEASE_TAG"
           git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"
           test "$(git rev-list -n 1 "$RELEASE_TAG")" = "$(git rev-parse HEAD)"
       - name: Require matching application and native versions

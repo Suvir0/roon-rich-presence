@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { AppSettings as SharedSettings } from '../shared/contracts';
+import type { AppSettingsPatch, RoonConnectionReason } from '../shared/contracts';
 
 type PlaybackState = 'playing' | 'paused' | 'loading' | 'stopped';
 type ConnectionState = 'connected' | 'connecting' | 'disconnected' | 'error';
 type RoonConnectionStatus = 'idle' | 'searching' | 'waiting' | 'connected' | 'error';
-type RoonStatus = { status: RoonConnectionStatus; message: string };
+type RoonStatus = {
+  status: RoonConnectionStatus;
+  message: string;
+  reason: RoonConnectionReason | undefined;
+};
 type Presence = {
   details: string;
   state: string | undefined;
@@ -32,7 +36,7 @@ type Settings = {
   manualRoonHost: string | undefined;
   manualRoonPort: number | undefined;
 };
-type SettingsPatch = Partial<Settings> & Partial<SharedSettings>;
+type SettingsPatch = AppSettingsPatch;
 
 type Snapshot = {
   onboardingComplete: boolean;
@@ -79,7 +83,7 @@ const defaults: Settings = {
 const demo: Snapshot = {
   onboardingComplete: false,
   settings: defaults,
-  roon: { status: 'idle', message: '' },
+  roon: { status: 'idle', message: '', reason: undefined },
   discord: 'disconnected',
   artwork: 'disabled',
   zones: [],
@@ -120,9 +124,19 @@ function normalizeRoon(value: unknown): RoonStatus {
     const status = (
       ROON_STATUSES.includes(statusStr as RoonConnectionStatus) ? statusStr : 'idle'
     ) as RoonConnectionStatus;
-    return { status, message: text(value.message) };
+    const reasonValue = text(value.reason);
+    const reason = [
+      'authorization-required',
+      'discovery-timeout',
+      'endpoint-unreachable',
+      'local-network-blocked',
+      'reconnecting'
+    ].includes(reasonValue)
+      ? (reasonValue as RoonConnectionReason)
+      : undefined;
+    return { status, message: text(value.message), reason };
   }
-  return { status: 'idle', message: '' };
+  return { status: 'idle', message: '', reason: undefined };
 }
 
 const ROON_STATUS_DOT: Record<RoonConnectionStatus, string> = {
@@ -596,12 +610,81 @@ function RoonConnectionChooser({
   update: (patch: SettingsPatch) => void;
 }) {
   const [manual, setManual] = useState(Boolean(snapshot.settings.manualRoonHost));
+  const [host, setHost] = useState(snapshot.settings.manualRoonHost ?? '');
+  const [port, setPort] = useState(
+    snapshot.settings.manualRoonPort ? String(snapshot.settings.manualRoonPort) : ''
+  );
+  const [formError, setFormError] = useState('');
+  const editing = useRef(false);
+  useEffect(() => {
+    if (editing.current) return;
+    setManual(Boolean(snapshot.settings.manualRoonHost));
+    setHost(snapshot.settings.manualRoonHost ?? '');
+    setPort(snapshot.settings.manualRoonPort ? String(snapshot.settings.manualRoonPort) : '');
+  }, [snapshot.settings.manualRoonHost, snapshot.settings.manualRoonPort]);
   const selectAutomatic = () => {
+    editing.current = false;
     setManual(false);
-    update({ manualRoonHost: '' });
+    setHost('');
+    setPort('');
+    setFormError('');
+    update({ manualRoonHost: '', manualRoonPort: null });
   };
+  const saveManual = () => {
+    const cleanHost = host.trim();
+    const cleanPort = port.trim();
+    const parsedPort = cleanPort ? Number(cleanPort) : undefined;
+    if (!cleanHost) {
+      setFormError('Enter the IP address or hostname of your Roon Server.');
+      return;
+    }
+    if (
+      cleanHost.length > 253 ||
+      (parsedPort !== undefined &&
+        (!Number.isInteger(parsedPort) || parsedPort < 1 || parsedPort > 65_535))
+    ) {
+      setFormError('Enter a valid server address and a port from 1 to 65535.');
+      return;
+    }
+    editing.current = false;
+    setFormError('');
+    update({ manualRoonHost: cleanHost, manualRoonPort: parsedPort ?? null });
+  };
+  const recovery =
+    snapshot.roon.reason === 'local-network-blocked'
+      ? {
+          title: 'Local Network access is blocked',
+          body: 'Allow Roon Rich Presence in macOS System Settings, then return here. The app will retry automatically.'
+        }
+      : snapshot.roon.reason === 'discovery-timeout'
+        ? {
+            title: 'No Roon Server was found',
+            body: 'Check that this computer and Roon Server are on the same network, or use a manual address.'
+          }
+        : snapshot.roon.reason === 'endpoint-unreachable'
+          ? {
+              title: 'The saved Roon Server is unreachable',
+              body: 'Its address or API port may have changed. Switch to Automatic discovery or update the manual address.'
+            }
+          : undefined;
   return (
     <div className="connection-method">
+      {recovery && (
+        <div className="connection-recovery" role="alert">
+          <span>
+            <strong>{recovery.title}</strong>
+            <small>{recovery.body}</small>
+          </span>
+          {snapshot.roon.reason === 'local-network-blocked' && (
+            <button
+              className="button ghost"
+              onClick={() => void window.rrp?.openLocalNetworkSettings()}
+            >
+              Open Local Network Settings
+            </button>
+          )}
+        </div>
+      )}
       <span className="field-label">Connection method</span>
       <div className="segmented" role="group" aria-label="Roon connection method">
         <button
@@ -620,7 +703,10 @@ function RoonConnectionChooser({
         </button>
       </div>
       {!manual ? (
-        <p>Recommended. Searches for Roon Servers on this local network automatically.</p>
+        <p>
+          Recommended. Uses Roon discovery to find the server and its current API port
+          automatically.
+        </p>
       ) : (
         <div className="manual-fields">
           <label>
@@ -628,25 +714,37 @@ function RoonConnectionChooser({
             <input
               aria-label="Roon Server host"
               placeholder="192.168.1.20"
-              defaultValue={snapshot.settings.manualRoonHost}
-              onBlur={(event) => update({ manualRoonHost: event.target.value.trim() })}
-            />
-          </label>
-          <label>
-            Port
-            <input
-              aria-label="Roon Server port"
-              inputMode="numeric"
-              placeholder="9330"
-              defaultValue={snapshot.settings.manualRoonPort}
-              onBlur={(event) => {
-                const value = Number(event.target.value);
-                if (Number.isInteger(value) && value >= 1 && value <= 65535)
-                  update({ manualRoonPort: value });
+              value={host}
+              onChange={(event) => {
+                editing.current = true;
+                setHost(event.target.value);
               }}
             />
           </label>
-          <p>Use this only when local discovery is blocked by your network.</p>
+          <details className="advanced-port" open={Boolean(port)}>
+            <summary>Advanced: specify API port</summary>
+            <label>
+              API port (optional)
+              <input
+                aria-label="Roon Server port"
+                inputMode="numeric"
+                placeholder="Discover automatically"
+                value={port}
+                onChange={(event) => {
+                  editing.current = true;
+                  setPort(event.target.value);
+                }}
+              />
+            </label>
+            <small>Leave this empty unless Roon shows you a specific API port.</small>
+          </details>
+          {formError && <p className="field-error">{formError}</p>}
+          <div className="manual-actions">
+            <p>Use this when automatic discovery is blocked by your network.</p>
+            <button className="button primary" onClick={saveManual}>
+              Save and Connect
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -978,6 +1076,7 @@ export default function App() {
   const [loaded, setLoaded] = useState(() => !window.rrp);
   const [tab, setTab] = useState<'home' | 'settings'>('home');
   const [toast, setToast] = useState('');
+  const settingsUpdateSequence = useRef(0);
 
   useEffect(() => {
     let active = true;
@@ -1008,19 +1107,29 @@ export default function App() {
   }, [api]);
 
   const update = (patch: SettingsPatch) => {
+    const sequence = ++settingsUpdateSequence.current;
     const previous = snapshotRef.current;
-    const optimistic = { ...previous, settings: { ...previous.settings, ...patch } };
+    const optimisticSettings: Settings = {
+      ...previous.settings,
+      ...patch,
+      manualRoonPort:
+        'manualRoonPort' in patch
+          ? (patch.manualRoonPort ?? undefined)
+          : previous.settings.manualRoonPort
+    };
+    const optimistic: Snapshot = { ...previous, settings: optimisticSettings };
     snapshotRef.current = optimistic;
     setSnapshot(optimistic);
     Promise.resolve(api?.updateSettings(patch))
       .then((value) => {
-        if (value) {
+        if (value && sequence === settingsUpdateSequence.current) {
           const next = normalize(value);
           snapshotRef.current = next;
           setSnapshot(next);
         }
       })
       .catch(() => {
+        if (sequence !== settingsUpdateSequence.current) return;
         snapshotRef.current = previous;
         setSnapshot(previous);
         setToast('That setting could not be saved. Your previous choice was restored.');

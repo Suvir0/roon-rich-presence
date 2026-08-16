@@ -12,6 +12,7 @@ import { appendFile, chmod, mkdir, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type {
   AppSettings,
+  AppSettingsPatch,
   AppSnapshot,
   PlaybackState,
   PresencePreview,
@@ -150,6 +151,7 @@ export class AppController {
   private diagnostics: string[] = [];
   private listeners = new Set<(snapshot: AppSnapshot) => void>();
   private lastForgetAt = 0;
+  private connectivityStarted = false;
   private readonly logPath = join(app.getPath('userData'), 'main.log');
   private readonly diagnosticLog = new BoundedDiagnosticLog(this.logPath);
 
@@ -159,11 +161,16 @@ export class AppController {
     await this.diagnosticLog.initialize().catch(() => undefined);
     await this.artwork.initialize();
     this.applyLoginItemSettings();
-    const manual = this.getManualRoonAddress();
-    this.roon.start(manual);
     this.discord.start();
     this.log('Application services initialized');
     this.reconcile();
+  }
+
+  /** Starts LAN-dependent Roon work once the caller has handled macOS prompt ordering. */
+  startConnectivity(): void {
+    if (this.connectivityStarted) return;
+    this.connectivityStarted = true;
+    this.roon.start(this.getManualRoonAddress());
   }
 
   subscribe(listener: (snapshot: AppSnapshot) => void): () => void {
@@ -196,6 +203,7 @@ export class AppController {
       roon: {
         status: this.roonSnapshot.status,
         message: this.roonSnapshot.message,
+        ...(this.roonSnapshot.reason ? { reason: this.roonSnapshot.reason } : {}),
         ...(this.roonSnapshot.serverName ? { serverName: this.roonSnapshot.serverName } : {})
       },
       discord: { ...this.discordSnapshot },
@@ -205,7 +213,7 @@ export class AppController {
     };
   }
 
-  updateSettings(patch: Partial<AppSettings>): AppSnapshot {
+  updateSettings(patch: AppSettingsPatch): AppSnapshot {
     const oldManual = this.getManualRoonAddress();
     this.settings = this.settingsStore.update(patch);
     this.applyLoginItemSettings();
@@ -213,7 +221,8 @@ export class AppController {
       this.automaticZoneId = undefined;
     }
     const nextManual = this.getManualRoonAddress();
-    if (JSON.stringify(oldManual) !== JSON.stringify(nextManual)) this.roon.restart(nextManual);
+    if (this.connectivityStarted && JSON.stringify(oldManual) !== JSON.stringify(nextManual))
+      this.roon.restart(nextManual);
     this.reconcile();
     return this.getSnapshot();
   }
@@ -228,11 +237,11 @@ export class AppController {
     this.lastForgetAt = now;
 
     // Stop first so a closing legacy connection cannot write its authorization back.
-    this.roon.stop();
+    if (this.connectivityStarted) this.roon.stop();
     this.settings = this.settingsStore.forgetRoonConnection();
     this.automaticZoneId = undefined;
     this.presenceMemory = {};
-    this.roon.start();
+    if (this.connectivityStarted) this.roon.start();
     this.log('Roon authorization and manual server override were forgotten');
     return this.getSnapshot();
   }
@@ -258,6 +267,7 @@ export class AppController {
     if (this.throttleTimer) clearTimeout(this.throttleTimer);
     this.discord.stop();
     this.roon.stop();
+    this.connectivityStarted = false;
   }
 
   private handleRoon(snapshot: RoonServiceSnapshot): void {
@@ -415,10 +425,12 @@ export class AppController {
     });
   }
 
-  private getManualRoonAddress(): { host: string; port: number } | undefined {
-    return this.settings?.manualRoonHost && this.settings.manualRoonPort
-      ? { host: this.settings.manualRoonHost, port: this.settings.manualRoonPort }
-      : undefined;
+  private getManualRoonAddress(): { host: string; port?: number } | undefined {
+    if (!this.settings?.manualRoonHost) return undefined;
+    return {
+      host: this.settings.manualRoonHost,
+      ...(this.settings.manualRoonPort ? { port: this.settings.manualRoonPort } : {})
+    };
   }
 
   private log(message: string): void {

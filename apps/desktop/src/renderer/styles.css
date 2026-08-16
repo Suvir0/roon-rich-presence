@@ -1225,6 +1225,30 @@ h2 {
   max-width: 500px;
   margin-top: 18px;
 }
+.connection-recovery {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid rgba(241, 197, 108, 0.24);
+  border-radius: 11px;
+  background: rgba(241, 197, 108, 0.07);
+}
+.connection-recovery span {
+  display: grid;
+  gap: 4px;
+}
+.connection-recovery small,
+.advanced-port small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.connection-recovery .button {
+  flex: 0 0 auto;
+}
 .field-label {
   display: block;
   margin-bottom: 8px;
@@ -1267,7 +1291,7 @@ h2 {
 }
 .manual-fields {
   display: grid;
-  grid-template-columns: 1fr 110px;
+  grid-template-columns: 1fr;
   gap: 10px;
   margin-top: 12px;
 }
@@ -1289,8 +1313,39 @@ h2 {
   color: #f2f3f5;
   font-size: 12px;
 }
-.manual-fields > p {
-  grid-column: 1 / -1;
+.advanced-port {
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.advanced-port summary {
+  color: #a9aeb8;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+}
+.advanced-port label {
+  margin-top: 10px;
+}
+.advanced-port small {
+  display: block;
+  margin-top: 7px;
+}
+.manual-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.manual-actions p,
+.field-error {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.field-error {
+  color: #ff9b9b;
 }
 
 /* Actionable dashboard ---------------------------------------------------- */
@@ -1416,11 +1471,10 @@ h2 {
 }
 
 @media (max-width: 620px) {
-  .manual-fields {
-    grid-template-columns: 1fr;
-  }
-  .manual-fields > p {
-    grid-column: 1;
+  .connection-recovery,
+  .manual-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
   .segmented button {
     padding-inline: 6px;

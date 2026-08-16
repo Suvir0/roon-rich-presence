@@ -12,7 +12,7 @@ The Roon Node API and its Transport, Image, and Status services are used under t
 
 Production packages load Discord's official Social SDK. The SDK is proprietary and governed by the [Discord Social SDK Terms](https://support-dev.discord.com/hc/en-us/articles/30225844245271-Discord-Social-SDK-Terms) and the terms delivered with the SDK. Its source archive and redistributable binaries are not part of this repository. Maintainers must accept the applicable terms and confirm redistribution rights before publishing an installer.
 
-Version 0.1.1 was built and tested against Discord Social SDK 1.10.18687. The SDK-provided `License-Notices.txt` is bundled beside the native bridge as `DiscordSocialSdk-License-Notices.txt`.
+Version 0.1.2 is built and tested against Discord Social SDK 1.10.18687. The SDK-provided `License-Notices.txt` is bundled beside the native bridge as `DiscordSocialSdk-License-Notices.txt`.
 
 ## MusicBrainz and Cover Art Archive
 
