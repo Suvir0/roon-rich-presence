@@ -25,6 +25,7 @@ import { SettingsStore } from './settings-store';
 
 const MAX_DIAGNOSTICS = 100;
 const FORGET_DEBOUNCE_MS = 1_500;
+const ARTWORK_RETRY_DELAYS_MS = [5_000, 15_000, 60_000] as const;
 // Rotate the log file when it grows beyond this size (bytes) to keep it bounded.
 const LOG_MAX_BYTES = 512_000;
 
@@ -43,6 +44,11 @@ const APPLICATION_ID_PATTERN = /\b\d{16,22}\b/g;
 const SECRET_ASSIGNMENT_PATTERN =
   /\b(authorization|bearer|token|access[_-]?token|refresh[_-]?token|api[_-]?key|secret|password)\b(\s*[:=]\s*|\s+)([^\s,;]+)/gi;
 const QUERY_PATTERN = /\?[A-Za-z0-9%_.~!$&'()*+,;=:@/?-]+/g;
+
+export function artworkRetryDelayMs(failureCount: number): number {
+  const index = Math.max(0, Math.min(ARTWORK_RETRY_DELAYS_MS.length - 1, failureCount - 1));
+  return ARTWORK_RETRY_DELAYS_MS[index] ?? 60_000;
+}
 
 /** Removes local-network, filesystem, and credential-like values before diagnostics leave memory. */
 export function redactDiagnostic(value: string): string {
@@ -140,6 +146,9 @@ export class AppController {
   private lastPreviewArtworkUrl: string | undefined;
   private artworkKey: string | undefined;
   private artworkGeneration = 0;
+  private artworkRetryTimer?: NodeJS.Timeout;
+  private artworkRetryKey: string | undefined;
+  private artworkRetryFailures = 0;
   private artworkState: AppSnapshot['artwork'] = {
     status: 'idle',
     message: 'Artwork matching is off; enable Find album covers to use public cover art'
@@ -265,6 +274,7 @@ export class AppController {
 
   shutdown(): void {
     if (this.throttleTimer) clearTimeout(this.throttleTimer);
+    if (this.artworkRetryTimer) clearTimeout(this.artworkRetryTimer);
     this.discord.stop();
     this.roon.stop();
     this.connectivityStarted = false;
@@ -291,6 +301,10 @@ export class AppController {
       this.settings.artworkLookupEnabled && selected?.artist && selected.album
         ? `${selected.artist}\u0000${selected.album}`
         : undefined;
+    if (nextArtworkKey !== this.artworkRetryKey) {
+      this.clearArtworkRetry();
+      this.artworkRetryKey = nextArtworkKey;
+    }
     if (nextArtworkKey !== this.artworkKey) {
       this.artworkKey = nextArtworkKey;
       this.lastPreviewArtworkUrl = this.artworkUrl ?? this.lastPreviewArtworkUrl;
@@ -316,8 +330,14 @@ export class AppController {
                     url: result.url
                   }
                 : result.status === 'error'
-                  ? { status: 'error', message: `${result.message}. Retry on the next track.` }
+                  ? { status: 'error', message: `${result.message}. Retrying automatically.` }
                   : { status: 'waiting', message: `${result.message}; using branded fallback` };
+            if (result.status === 'error') {
+              this.log(`Artwork service error: ${result.message}`);
+              this.scheduleArtworkRetry(nextArtworkKey);
+            } else {
+              this.clearArtworkRetry(false);
+            }
             this.publishPresence();
             this.emit();
           })
@@ -327,11 +347,12 @@ export class AppController {
             this.lastPreviewArtworkUrl = undefined;
             this.artworkState = {
               status: 'error',
-              message: 'Artwork lookup failed; using branded fallback. Retry on the next track.'
+              message: 'Artwork lookup failed; using branded fallback. Retrying automatically.'
             };
             this.log(
               `Artwork lookup failed: ${error instanceof Error ? error.message : 'unknown error'}`
             );
+            this.scheduleArtworkRetry(nextArtworkKey);
             this.publishPresence();
             this.emit();
           });
@@ -348,6 +369,27 @@ export class AppController {
     }
     this.publishPresence();
     this.emit();
+  }
+
+  private scheduleArtworkRetry(key: string): void {
+    if (this.artworkRetryTimer || key !== this.artworkKey) return;
+    this.artworkRetryFailures += 1;
+    const delay = artworkRetryDelayMs(this.artworkRetryFailures);
+    this.log(`Artwork retry scheduled in ${Math.round(delay / 1_000)} seconds`);
+    this.artworkRetryTimer = setTimeout(() => {
+      delete this.artworkRetryTimer;
+      if (key !== this.artworkKey || key !== this.artworkRetryKey) return;
+      this.artworkKey = undefined;
+      this.reconcile();
+    }, delay);
+    this.artworkRetryTimer.unref();
+  }
+
+  private clearArtworkRetry(clearKey = true): void {
+    if (this.artworkRetryTimer) clearTimeout(this.artworkRetryTimer);
+    delete this.artworkRetryTimer;
+    this.artworkRetryFailures = 0;
+    if (clearKey) this.artworkRetryKey = undefined;
   }
 
   private publishPresence(): void {

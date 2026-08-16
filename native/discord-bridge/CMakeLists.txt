@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(roon_discord_bridge VERSION 0.1.2 LANGUAGES CXX)
+project(roon_discord_bridge VERSION 0.1.3 LANGUAGES CXX)
 
 option(RRP_DISCORD_STUB "Build without the Discord Social SDK (development and CI only)" ON)
 option(RRP_BUILD_TESTS "Build bridge protocol tests" ON)

@@ -2,6 +2,14 @@
 
 This project follows semantic versioning. Dates use the ISO 8601 format.
 
+## 0.1.3 - 2026-08-16
+
+- Fixed album artwork matching when Roon appends common edition labels such as **Explicit**, **Clean**, **Deluxe Edition**, or remaster annotations
+- Invalidated earlier negative artwork-cache entries so corrected matches are retried immediately
+- Added rate-limit-safe delays between MusicBrainz and Cover Art Archive retries
+- Added automatic retries for transient artwork-service failures while the same song remains selected
+- Added redacted artwork failure diagnostics without recording artist, album, or track metadata
+
 ## 0.1.2 - 2026-08-16
 
 - Changed Roon endpoint discovery to use the API port advertised by the server
