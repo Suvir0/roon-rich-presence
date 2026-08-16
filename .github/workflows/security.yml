@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   codeql:
+    if: github.event.repository.visibility == 'public'
     permissions:
       actions: read
       contents: read
