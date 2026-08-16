@@ -8,9 +8,7 @@ This is an independent project. It is not affiliated with Roon Labs or Discord.
 
 ## Current status
 
-The macOS build is the primary release target. Windows and Linux packages are available as beta targets until they have completed the full platform test matrix.
-
-The first public release still needs production signing and notarization. Do not distribute local or unsigned builds as official releases.
+macOS, Windows, and Linux packages are beta releases. The macOS build is ad-hoc signed so it can run, but it is not signed with an Apple Developer ID or notarized. macOS will show a security warning on first launch.
 
 ## What it does
 
@@ -27,15 +25,18 @@ The first public release still needs production signing and notarization. Do not
 
 Official downloads will be attached to the [GitHub Releases page](https://github.com/Suvir0/roon-rich-presence/releases).
 
-### macOS
+### macOS beta
 
-1. Download the universal `.dmg` from the latest release.
+1. Download the universal `Roon Rich Presence-Beta-*.dmg` from the latest release.
 2. Open the disk image and drag Roon Rich Presence into Applications.
-3. Launch the app from Applications.
-4. Allow Local Network access when macOS asks. The app needs it to discover Roon.
-5. Open Roon and go to **Settings > Extensions**.
-6. Find **Roon Rich Presence** and click **Enable**.
-7. Return to the app, choose a playback zone, and finish setup.
+3. In Applications, Control-click Roon Rich Presence and choose **Open**.
+4. Confirm **Open** when macOS warns that the developer cannot be verified. If macOS blocks it, open **System Settings > Privacy & Security** and use **Open Anyway** for Roon Rich Presence.
+5. Allow Local Network access when macOS asks. The app needs it to discover Roon.
+6. Open Roon and go to **Settings > Extensions**.
+7. Find **Roon Rich Presence** and click **Enable**.
+8. Return to the app, choose a playback zone, and finish setup.
+
+Only download the beta from this repository and compare it with the published checksum. Automatic updates are disabled for unsigned beta builds, so install new versions manually from GitHub Releases.
 
 The app stays available in the menu bar after you close its window. Click the waveform icon to change the active zone, turn Discord sharing on or off, reopen the dashboard, or quit.
 
@@ -140,11 +141,12 @@ npm run audit:prod
 
 ```sh
 npm run package:mac
+npm run package:mac:beta
 npm run package:win
 npm run package:linux
 ```
 
-Local packages are for testing. A public release must use the protected GitHub Actions release workflow so the native bridge, signing, notarization, checksums, SBOM, and provenance are handled consistently.
+Local packages are for testing. The protected GitHub Actions release workflow creates clearly labeled beta installers, checksums, an SBOM, and provenance. The macOS beta is ad-hoc signed but not Developer ID signed or notarized.
 
 ## Maintainer release setup
 
@@ -188,7 +190,7 @@ Add these secrets to `discord-social-sdk`:
 | `DISCORD_SDK_SHA256`         | Independently verified archive checksum |
 | `DISCORD_SDK_DOWNLOAD_TOKEN` | Credential used to download the archive |
 
-Add these secrets to `release-signing` for macOS:
+No Apple credentials are needed while macOS remains an unsigned beta. To promote macOS to a normal stable release later, join the Apple Developer Program and add:
 
 | Secret                        | Purpose                                                                 |
 | ----------------------------- | ----------------------------------------------------------------------- |
@@ -229,7 +231,7 @@ Enable the following where they are available:
 6. Push the commit and tag.
 7. Create an empty draft GitHub Release for that exact tag.
 8. Run the **Release** workflow manually and enter the same tag.
-9. Download the generated artifacts and verify signatures, notarization, checksums, SBOM, and provenance from a clean machine.
+9. Download the generated artifacts and verify the expected beta signing state, checksums, SBOM, and provenance from a clean machine.
 10. Publish the draft release only after the smoke tests pass.
 
 The workflow refuses arbitrary refs, mismatched versions, stub bridges, duplicate assets, existing release assets, and placeholder project identity.

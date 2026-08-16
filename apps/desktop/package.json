@@ -15,6 +15,7 @@
     "test": "vitest run",
     "package": "npm run build && electron-builder",
     "package:mac": "npm run build && electron-builder --mac --universal",
+    "package:mac:beta": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac --universal -c.mac.identity=-",
     "package:win": "npm run build && electron-builder --win --x64",
     "package:linux": "npm run build && electron-builder --linux --x64"
   },

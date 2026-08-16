@@ -71,7 +71,7 @@ const defaults: Settings = {
   artworkLookupEnabled: false,
   startAtLogin: false,
   launchHidden: false,
-  automaticUpdates: true,
+  automaticUpdates: false,
   manualRoonHost: undefined,
   manualRoonPort: undefined
 };
@@ -929,9 +929,10 @@ function SettingsPanel({
         />
         <Toggle
           label="Automatic updates"
-          description="Check for trusted updates from GitHub Releases."
-          checked={snapshot.settings.automaticUpdates}
-          onChange={(automaticUpdates) => update({ automaticUpdates })}
+          description="Unavailable in unsigned beta builds. Download updates manually from GitHub Releases."
+          checked={false}
+          disabled
+          onChange={() => undefined}
         />
       </section>
       <section className="card settings-card danger-zone">

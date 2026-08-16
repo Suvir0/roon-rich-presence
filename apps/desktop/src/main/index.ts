@@ -336,7 +336,12 @@ async function start(): Promise<void> {
 
   const settings = controller.getSnapshot().settings;
   const updateConfiguration = join(process.resourcesPath, 'app-update.yml');
-  if (app.isPackaged && process.platform === 'darwin' && settings.automaticUpdates) {
+  if (
+    app.isPackaged &&
+    process.platform === 'darwin' &&
+    process.env.RRP_ENABLE_AUTO_UPDATES === 'true' &&
+    settings.automaticUpdates
+  ) {
     // Skip the update check if the build was never configured with a real GitHub owner
     // (placeholder build).  The 404 from GitHub fills the console with unhelpful errors.
     const hasRealOwner = await readFile(updateConfiguration, 'utf8')

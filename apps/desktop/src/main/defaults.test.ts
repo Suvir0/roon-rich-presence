@@ -37,4 +37,8 @@ describe('sanitizeSettings', () => {
     expect(result.presenceEnabled).toBe(false);
     expect(result.showAlbum).toBe(true);
   });
+
+  it('disables automatic updates for unsigned beta builds', () => {
+    expect(sanitizeSettings({ automaticUpdates: true }).automaticUpdates).toBe(false);
+  });
 });

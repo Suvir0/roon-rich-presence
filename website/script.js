@@ -6,7 +6,9 @@ themeButton?.addEventListener('click', () => {
   document.documentElement.dataset.theme = next;
   try {
     localStorage.setItem('suvir-theme', next);
-  } catch (_) {}
+  } catch {
+    // Browsing modes that block local storage can still use the selected theme for this visit.
+  }
 });
 
 mobileMenu?.querySelectorAll('a').forEach((link) => {

@@ -22,7 +22,10 @@ export default async function afterPack(context) {
 
   for (const key of UNUSED_PRIVACY_KEYS) {
     const result = spawnSync('/usr/bin/plutil', ['-remove', key, plistPath], { encoding: 'utf8' });
-    if (result.status !== 0 && !result.stderr.includes('Could not modify plist')) {
+    const keyWasAlreadyAbsent =
+      result.stderr.includes('Could not modify plist') ||
+      result.stderr.includes('No value to remove');
+    if (result.status !== 0 && !keyWasAlreadyAbsent) {
       throw new Error(`Could not remove unused macOS privacy key ${key}: ${result.stderr.trim()}`);
     }
   }

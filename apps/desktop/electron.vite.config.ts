@@ -14,11 +14,17 @@ const publicBuildValues = Object.fromEntries(
   )
 );
 
+const releaseCapabilities = {
+  'process.env.RRP_ENABLE_AUTO_UPDATES': JSON.stringify(
+    process.env.RRP_ENABLE_AUTO_UPDATES === 'true' ? 'true' : 'false'
+  )
+};
+
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
     resolve: { alias: { '@rrp/core': resolve('../../packages/core/src/index.ts') } },
-    define: publicBuildValues
+    define: { ...publicBuildValues, ...releaseCapabilities }
   },
   preload: {
     plugins: [externalizeDepsPlugin()],

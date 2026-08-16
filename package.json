@@ -29,6 +29,7 @@
     "secrets:check": "node scripts/check-sensitive-files.mjs",
     "package": "npm run package -w @rrp/desktop",
     "package:mac": "npm run package:mac -w @rrp/desktop",
+    "package:mac:beta": "npm run package:mac:beta -w @rrp/desktop",
     "package:win": "npm run package:win -w @rrp/desktop",
     "package:linux": "npm run package:linux -w @rrp/desktop"
   },

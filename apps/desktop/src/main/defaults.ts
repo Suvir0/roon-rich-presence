@@ -11,7 +11,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   artworkLookupEnabled: false,
   startAtLogin: false,
   launchHidden: true,
-  automaticUpdates: true,
+  automaticUpdates: false,
   onboardingComplete: false
 };
 
@@ -34,6 +34,9 @@ export function sanitizeSettings(input: unknown): AppSettings {
   for (const key of booleans) {
     if (typeof value[key] === 'boolean') settings[key] = value[key];
   }
+  // Unsigned beta builds use manual downloads because macOS auto-update
+  // verification requires a stable Developer ID signing identity.
+  settings.automaticUpdates = false;
   if (value.zoneMode === 'selected' || value.zoneMode === 'automatic') {
     settings.zoneMode = value.zoneMode;
   }

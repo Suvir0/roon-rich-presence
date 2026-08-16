@@ -56,7 +56,7 @@ mac:
     - target: zip
       arch:
         - universal
-  artifactName: '${productName}-${version}-${arch}.${ext}'
+  artifactName: '${productName}-Beta-${version}-${arch}.${ext}'
 win:
   icon: resources/icon.ico
   target:

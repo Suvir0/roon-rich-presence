@@ -57,13 +57,13 @@ Release gate: all automated suites pass from a clean clone and the completed man
 - Pin workflow actions, generate checksums/SBOM/license notices/provenance, and never overwrite a published release.
 - Freeze the production application identity, repository owner, Discord application/assets, publisher, support address, signing identities, and update feed.
 
-Release gate: final downloaded files match checksums and attestations; macOS passes recursive signing, Gatekeeper, notarization, stapling, universal-slice, and update tests; Windows/Linux beta exceptions are explicit.
+Release gate: final downloaded files match checksums and attestations; macOS beta passes ad-hoc signing, documented Gatekeeper, universal-slice, and manual update tests; Windows/Linux beta exceptions are explicit.
 
 ## Release sequence
 
 1. Internal alpha: clean clone, full automated suite, production bridge preflight, and unsigned local packages.
-2. Signed macOS release candidate: Apple Silicon and Intel clean-machine acceptance plus update-from-previous-version.
-3. Windows/Linux beta candidates: signed installer/package checks and platform-specific Discord IPC/startup validation.
-4. Public release: publish immutable assets only after the release captain records evidence for every applicable gate.
+2. macOS beta candidate: Apple Silicon and Intel clean-machine acceptance with the expected Gatekeeper warning.
+3. Windows/Linux beta candidates: installer/package checks and platform-specific Discord IPC/startup validation.
+4. Public beta release: publish immutable assets only after the release captain records evidence for every applicable gate.
 
 Existing `release/` artifacts are not release candidates until rebuilt and verified; prior local macOS bundles failed strict nested signature verification during the productization audit.

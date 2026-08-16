@@ -4,7 +4,7 @@ Record app version, commit, SDK version/checksum, OS/build, architecture, Roon S
 
 | Area                | Scenario                                                         | Expected result                                                                                                                         |
 | ------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Install             | Fresh install, launch, and uninstall                             | Signature is valid; no unexpected warnings on stable macOS; uninstall leaves no running process                                         |
+| Install             | Fresh install, launch, and uninstall                             | Beta label is visible; documented platform warning is expected; uninstall leaves no running process                                     |
 | macOS Local Network | Inspect `Info.plist` for `NSLocalNetworkUsageDescription`        | Key is present in packaged `Roon Rich Presence.app/Contents/Info.plist`                                                                 |
 | macOS Local Network | First launch of packaged app with no prior Local Network grant   | macOS prompts "Roon Rich Presence wants to find devices on your local network"; allowing triggers discovery                             |
 | macOS Local Network | Deny Local Network, then re-open                                 | Extension does not appear in Roon; dashboard shows "Still searching…" hint mentioning Local Network after ~12 s                         |
@@ -34,10 +34,10 @@ Record app version, commit, SDK version/checksum, OS/build, architecture, Roon S
 
 ## Platform release gates
 
-- **macOS stable:** test current and previous major macOS on Apple Silicon and Intel (or verified universal binary); validate Gatekeeper, Developer ID signature, hardened runtime, entitlements, notarization/stapling, DMG, ZIP, login item, and update signature. Verify `NSLocalNetworkUsageDescription` is present in the packaged `Info.plist` and that the Local Network prompt appears on first launch from a clean TCC state (`tccutil reset LocalNetwork` to reset).
+- **macOS beta:** test current and previous major macOS on Apple Silicon and Intel (or a verified universal binary); validate the expected Gatekeeper warning, ad-hoc signature, hardened runtime, entitlements, DMG, ZIP, login item, and manual update procedure. Verify `NSLocalNetworkUsageDescription` is present in the packaged `Info.plist` and that the Local Network prompt appears on first launch from a clean TCC state (`tccutil reset LocalNetwork` to reset).
 - **Windows beta:** test Windows 11 x64 standard user; validate NSIS install/uninstall, Start menu entry, startup registration, Discord IPC, Defender/SmartScreen behavior, and Authenticode status. Keep beta label until signed and tested without blocking warnings.
 - **Linux beta:** test supported Ubuntu and one Debian-family distribution; validate AppImage executable bit, `.deb` install/remove, keyring unavailable warning, desktop entry, autostart, Discord IPC, and bundled SDK runtime resolution. Document Wayland/display-server issues.
 
 ## Final smoke before publication
 
-On a clean machine: verify checksum/signature, install, authorize Roon, play/seek/pause/resume/stop one track, confirm cover and profile from a second Discord account, quit and confirm presence clears, relaunch hidden, then uninstall. The production bridge must identify `discord-social-sdk`, never `stub`.
+On a clean machine: verify checksum and expected beta signing state, install, authorize Roon, play/seek/pause/resume/stop one track, confirm cover and profile from a second Discord account, quit and confirm presence clears, relaunch hidden, then uninstall. The production bridge must identify `discord-social-sdk`, never `stub`.
