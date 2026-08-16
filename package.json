@@ -1,6 +1,6 @@
 {
   "name": "roon-rich-presence",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "A local-first Roon to Discord Rich Presence desktop companion",
   "author": "Suvir Potdar <hello@suvir.net>",

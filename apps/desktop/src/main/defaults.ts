@@ -1,7 +1,7 @@
 import type { AppSettings } from '../shared/contracts';
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   presenceEnabled: true,
   zoneMode: 'selected',
   showAlbum: true,
@@ -47,7 +47,11 @@ export function sanitizeSettings(input: unknown): AppSettings {
   if (candidateHost.length > 0 && candidateHost.length <= 253) {
     settings.manualRoonHost = candidateHost;
   }
+  // v0.1.1 treated 9330 as a stable default. It is not: Roon advertises its
+  // current API port through discovery. Keep a port only when it was explicitly
+  // saved by the schema-v2 advanced field.
   if (
+    value.schemaVersion === 2 &&
     typeof value.manualRoonPort === 'number' &&
     Number.isInteger(value.manualRoonPort) &&
     value.manualRoonPort >= 1 &&

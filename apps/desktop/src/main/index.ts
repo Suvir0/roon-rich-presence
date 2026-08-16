@@ -17,9 +17,9 @@ import electronUpdater from 'electron-updater';
 import { readFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
 import { z } from 'zod';
-import { IPC_CHANNELS, type AppSettings, type AppSnapshot } from '../shared/contracts';
+import { IPC_CHANNELS, type AppSettingsPatch, type AppSnapshot } from '../shared/contracts';
 import { AppController } from './app-controller';
-import { requestLocalNetworkAccess } from './local-network';
+import { beginVisibleNetworkAccess, requestLocalNetworkAccess } from './local-network';
 import { rendererUrlIsTrusted, resolveRendererAssetPath } from './security';
 
 const { autoUpdater } = electronUpdater;
@@ -71,7 +71,7 @@ const settingsPatchSchema = z
     automaticUpdates: z.boolean().optional(),
     onboardingComplete: z.boolean().optional(),
     manualRoonHost: z.string().trim().max(253).optional(),
-    manualRoonPort: z.number().int().min(1).max(65535).optional()
+    manualRoonPort: z.number().int().min(1).max(65535).nullable().optional()
   })
   .strict();
 
@@ -80,6 +80,27 @@ let tray: Tray | undefined;
 let controller: AppController | undefined;
 let isQuitting = false;
 let lastTrayMenuKey = '';
+let localNetworkAccessRequest: Promise<void> | undefined;
+
+function requestLocalNetworkAccessOnce(): Promise<void> {
+  localNetworkAccessRequest ??= requestLocalNetworkAccess();
+  return localNetworkAccessRequest;
+}
+
+function shouldLaunchHidden(): boolean {
+  const settings = controller?.getSnapshot().settings;
+  return Boolean(
+    settings?.onboardingComplete &&
+    settings.launchHidden &&
+    app.getLoginItemSettings().wasOpenedAtLogin
+  );
+}
+
+function beginVisibleConnectivity(): void {
+  void beginVisibleNetworkAccess(requestLocalNetworkAccessOnce, () =>
+    controller?.startConnectivity()
+  );
+}
 
 function assertTrustedSender(event: IpcMainInvokeEvent): void {
   if (
@@ -217,11 +238,11 @@ function createWindow(): BrowserWindow {
     });
   }
   created.once('ready-to-show', () => {
-    const launchHidden =
-      controller?.getSnapshot().settings.launchHidden &&
-      app.getLoginItemSettings().wasOpenedAtLogin;
-    if (!launchHidden) created.show();
+    if (!shouldLaunchHidden()) created.show();
   });
+  // macOS can suppress a privacy prompt raised while an app is hidden. Wait until
+  // the dashboard is actually visible, including a later tray-open after login.
+  created.once('show', beginVisibleConnectivity);
   window = created;
   return created;
 }
@@ -267,7 +288,7 @@ function registerIpc(): void {
   });
   ipcMain.handle(IPC_CHANNELS.updateSettings, (event, input: unknown) => {
     assertTrustedSender(event);
-    const patch = settingsPatchSchema.parse(input) as Partial<AppSettings>;
+    const patch = settingsPatchSchema.parse(input) as AppSettingsPatch;
     return controller?.updateSettings(patch);
   });
   ipcMain.handle(IPC_CHANNELS.completeOnboarding, (event) => {
@@ -281,6 +302,14 @@ function registerIpc(): void {
   ipcMain.handle(IPC_CHANNELS.copyDiagnostics, (event) => {
     assertTrustedSender(event);
     clipboard.writeText(controller?.getRedactedDiagnostics() ?? '');
+    return true;
+  });
+  ipcMain.handle(IPC_CHANNELS.openLocalNetworkSettings, async (event) => {
+    assertTrustedSender(event);
+    if (process.platform !== 'darwin') return false;
+    await shell.openExternal(
+      'x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork'
+    );
     return true;
   });
   ipcMain.handle(IPC_CHANNELS.openExternal, async (event, input: unknown) => {
@@ -315,11 +344,6 @@ async function start(): Promise<void> {
       rendererUrlIsTrusted(webContents.getURL(), process.env.ELECTRON_RENDERER_URL)
     )
   );
-
-  // On macOS, send a one-byte mDNS UDP packet to trigger the Local Network privacy
-  // prompt before opening any Roon connections.  The dialog fires at most once ever;
-  // on subsequent launches this is a fast no-op (~1 ms).
-  await requestLocalNetworkAccess();
 
   controller = new AppController();
   await controller.initialize();
