@@ -1,0 +1,286 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing v-prefixed tag to package
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate release tag and versions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+      - name: Require an exact tag ref at HEAD
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"
+          test "$(git rev-list -n 1 "$RELEASE_TAG")" = "$(git rev-parse HEAD)"
+      - name: Require matching application and native versions
+        run: node scripts/validate-release.mjs "${{ inputs.tag }}"
+
+  native:
+    name: Official Discord bridge (${{ matrix.label }})
+    needs: validate
+    environment: discord-social-sdk
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-latest, label: mac-universal, archive: bridge-mac }
+          - { os: windows-latest, label: windows-x64, archive: bridge-win }
+          - { os: ubuntu-latest, label: linux-x64, archive: bridge-linux }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - name: Require protected SDK configuration
+        shell: bash
+        env:
+          SDK_URL: ${{ secrets.DISCORD_SDK_ARCHIVE_URL }}
+          SDK_SHA256: ${{ secrets.DISCORD_SDK_SHA256 }}
+          SDK_TOKEN: ${{ secrets.DISCORD_SDK_DOWNLOAD_TOKEN }}
+        run: test -n "$SDK_URL" && test -n "$SDK_SHA256" && test -n "$SDK_TOKEN"
+      - name: Download approved SDK archive
+        shell: bash
+        env:
+          SDK_URL: ${{ secrets.DISCORD_SDK_ARCHIVE_URL }}
+          SDK_TOKEN: ${{ secrets.DISCORD_SDK_DOWNLOAD_TOKEN }}
+        run: |
+          curl --fail --location --proto '=https' --header "Authorization: Bearer $SDK_TOKEN" "$SDK_URL" --output sdk.zip
+      - name: Verify and extract SDK
+        shell: pwsh
+        env:
+          SDK_SHA256: ${{ secrets.DISCORD_SDK_SHA256 }}
+        run: |
+          $actual = (Get-FileHash -LiteralPath sdk.zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne $env:SDK_SHA256.ToLowerInvariant()) {
+            throw "Discord Social SDK checksum mismatch"
+          }
+          Expand-Archive -LiteralPath sdk.zip -DestinationPath sdk
+      - name: Configure native bridge (macOS universal)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: cmake -S native/discord-bridge -B build/native -DRRP_DISCORD_STUB=OFF -DRRP_BUILD_TESTS=OFF -DDISCORD_SOCIAL_SDK_ROOT="$PWD/sdk" -DCMAKE_BUILD_TYPE=Release '-DCMAKE_OSX_ARCHITECTURES=arm64;x86_64'
+      - name: Configure native bridge
+        if: runner.os != 'macOS'
+        shell: bash
+        run: cmake -S native/discord-bridge -B build/native -DRRP_DISCORD_STUB=OFF -DRRP_BUILD_TESTS=OFF -DDISCORD_SOCIAL_SDK_ROOT="$PWD/sdk" -DCMAKE_BUILD_TYPE=Release
+      - name: Build native bridge
+        run: cmake --build build/native --config Release --parallel
+      - name: Stage bridge and SDK runtime
+        shell: bash
+        run: |
+          mkdir staging
+          cmake --install build/native --config Release --prefix "$PWD/staging"
+      - name: Preflight production bridge
+        shell: bash
+        env:
+          DISCORD_APPLICATION_ID: ${{ vars.DISCORD_APPLICATION_ID }}
+        run: |
+          test -n "$DISCORD_APPLICATION_ID"
+          bridge="staging/bin/discord-bridge"
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            bridge="${bridge}.exe"
+          else
+            chmod +x "$bridge"
+            test -x "$bridge"
+          fi
+          test -f "$bridge"
+          node scripts/preflight-release-bridge.mjs "$bridge" "$DISCORD_APPLICATION_ID"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.archive }}
+          path: staging/bin
+          if-no-files-found: error
+          retention-days: 3
+
+  package:
+    name: Package (${{ matrix.label }})
+    needs: native
+    environment: release-signing
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-latest, label: mac-universal, bridge: bridge-mac, command: 'package:mac' }
+          - {
+              os: windows-latest,
+              label: windows-x64-beta,
+              bridge: bridge-win,
+              command: 'package:win'
+            }
+          - {
+              os: ubuntu-latest,
+              label: linux-x64-beta,
+              bridge: bridge-linux,
+              command: 'package:linux'
+            }
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.bridge }}
+          path: apps/desktop/resources/discord-bridge/bin
+      - name: Restore and verify native executable mode
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          bridge="apps/desktop/resources/discord-bridge/bin/discord-bridge"
+          test -f "$bridge"
+          chmod 0755 "$bridge"
+          test -x "$bridge"
+      - name: Verify Windows native executable
+        if: runner.os == 'Windows'
+        shell: bash
+        run: test -f apps/desktop/resources/discord-bridge/bin/discord-bridge.exe
+      - run: npm ci
+      - name: Require public application identity
+        shell: bash
+        env:
+          DISCORD_APPLICATION_ID: ${{ vars.DISCORD_APPLICATION_ID }}
+          ROON_EXTENSION_ID: ${{ vars.ROON_EXTENSION_ID }}
+          PROJECT_CONTACT_URL: ${{ vars.PROJECT_CONTACT_URL }}
+          PROJECT_PUBLISHER: ${{ vars.PROJECT_PUBLISHER }}
+          PROJECT_SUPPORT_EMAIL: ${{ vars.PROJECT_SUPPORT_EMAIL }}
+        run: |
+          test -n "$DISCORD_APPLICATION_ID"
+          test -n "$ROON_EXTENSION_ID"
+          test -n "$PROJECT_CONTACT_URL"
+          test -n "$PROJECT_PUBLISHER"
+          test -n "$PROJECT_SUPPORT_EMAIL"
+          if grep -q 'PROJECT_OWNER' apps/desktop/electron-builder.yml; then
+            echo "Replace the PROJECT_OWNER updater placeholder before a public release" >&2
+            exit 1
+          fi
+      - name: Package and sign
+        env:
+          DISCORD_APPLICATION_ID: ${{ vars.DISCORD_APPLICATION_ID }}
+          ROON_EXTENSION_ID: ${{ vars.ROON_EXTENSION_ID }}
+          PROJECT_CONTACT_URL: ${{ vars.PROJECT_CONTACT_URL }}
+          PROJECT_PUBLISHER: ${{ vars.PROJECT_PUBLISHER }}
+          PROJECT_SUPPORT_EMAIL: ${{ vars.PROJECT_SUPPORT_EMAIL }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: npm run ${{ matrix.command }}
+      - name: Stage only publishable release assets
+        shell: bash
+        run: |
+          mkdir -p upload
+          case "${{ runner.os }}" in
+            macOS)
+              patterns=('*.dmg' '*.zip' '*.blockmap' 'latest-mac.yml')
+              required=('*.dmg' '*.zip' 'latest-mac.yml')
+              ;;
+            Windows)
+              patterns=('*.exe' '*.blockmap' 'latest.yml')
+              required=('*.exe')
+              ;;
+            Linux)
+              patterns=('*.AppImage' '*.deb' '*.blockmap' 'latest-linux.yml')
+              required=('*.AppImage' '*.deb')
+              ;;
+          esac
+          for pattern in "${patterns[@]}"; do
+            while IFS= read -r -d '' asset; do
+              cp "$asset" upload/
+            done < <(find release -maxdepth 1 -type f -name "$pattern" -print0)
+          done
+          for pattern in "${required[@]}"; do
+            compgen -G "upload/$pattern" > /dev/null || {
+              echo "Missing required release asset: $pattern" >&2
+              exit 1
+            }
+          done
+          test -z "$(find upload -maxdepth 1 -type f \( -name 'builder-*.yml' -o -name 'builder-*.yaml' \) -print -quit)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.label }}
+          path: upload
+          if-no-files-found: error
+
+  publish:
+    needs: package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: installers-*
+          path: downloaded
+      - name: Merge assets without filename collisions
+        shell: bash
+        run: |
+          mkdir artifacts
+          while IFS= read -r -d '' source; do
+            destination="artifacts/$(basename "$source")"
+            if [[ -e "$destination" ]]; then
+              echo "Duplicate release asset name: $(basename "$source")" >&2
+              exit 1
+            fi
+            cp "$source" "$destination"
+          done < <(find downloaded -type f -print0)
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: artifacts/sbom.cdx.json
+      - name: Create checksums
+        run: find artifacts -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > artifacts/SHA256SUMS.txt
+      - name: Attest release artifacts
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: artifacts/**/*
+      - name: Require an empty draft release asset namespace
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        shell: bash
+        run: |
+          test "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" = "true"
+          existing_assets="$(gh release view "$RELEASE_TAG" --json assets --jq '.assets[].name')"
+          if [[ -n "$existing_assets" ]]; then
+            echo "The draft release already has assets; refusing replacement or partial overwrite" >&2
+            printf '%s\n' "$existing_assets" >&2
+            exit 1
+          fi
+      - name: Upload to existing GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ inputs.tag }}" artifacts/*

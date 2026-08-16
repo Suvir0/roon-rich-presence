@@ -1,0 +1,85 @@
+appId: io.github.suvir0.roon-rich-presence
+productName: Roon Rich Presence
+copyright: Copyright © 2026 Suvir Potdar
+afterPack: build/after-pack.mjs
+directories:
+  output: ../../release
+  buildResources: resources
+files:
+  - out/**/*
+  - package.json
+extraResources:
+  - from: ../../LICENSE
+    to: LICENSE.txt
+  - from: ../../THIRD_PARTY_NOTICES.md
+    to: THIRD_PARTY_NOTICES.md
+  - from: resources/discord-bridge/bin
+    to: discord-bridge
+    filter:
+      - '**/*'
+  - from: resources/tray
+    to: tray
+    filter:
+      - '*.png'
+asar: true
+asarUnpack:
+  - '**/discord-bridge/**'
+electronFuses:
+  runAsNode: false
+  enableCookieEncryption: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
+mac:
+  icon: resources/icon.icns
+  category: public.app-category.music
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  # Entitlements are required for ad-hoc signing to survive Electron Fuses.
+  # Without them the re-signed binary lacks allow-jit and crashes on first launch.
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  entitlementsLoginHelper: build/entitlements.mac.plist
+  extendInfo:
+    NSLocalNetworkUsageDescription: >-
+      Roon Rich Presence needs access to your local network to discover
+      and connect to your Roon Server.
+    # Listing the Roon TCP service helps macOS attribute the network access
+    # to this app and makes the Local Network privacy prompt more specific.
+    NSBonjourServices:
+      - _roon._tcp
+  target:
+    - target: dmg
+      arch:
+        - universal
+    - target: zip
+      arch:
+        - universal
+  artifactName: '${productName}-${version}-${arch}.${ext}'
+win:
+  icon: resources/icon.ico
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: '${productName}-Beta-${version}-${arch}.${ext}'
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+linux:
+  icon: resources/icon.png
+  category: AudioVideo
+  target:
+    - target: AppImage
+      arch:
+        - x64
+    - target: deb
+      arch:
+        - x64
+  artifactName: '${productName}-Beta-${version}-${arch}.${ext}'
+publish:
+  provider: github
+  owner: Suvir0
+  repo: roon-rich-presence

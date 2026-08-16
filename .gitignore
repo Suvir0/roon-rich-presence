@@ -1,0 +1,22 @@
+node_modules/
+dist/
+out/
+release/
+coverage/
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example
+# Legacy node-roon-api persisted authorization. Never commit this file.
+config.json
+apps/desktop/.vite/
+apps/desktop/resources/discord-bridge/bin/
+native/discord-bridge/vendor/
+native/discord-bridge/build/
+*.dmg
+*.AppImage
+*.deb
+*.exe
+*.blockmap
+latest*.yml

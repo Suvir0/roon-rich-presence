@@ -1,0 +1,48 @@
+{
+  "name": "roon-rich-presence",
+  "version": "0.1.1",
+  "private": true,
+  "description": "A local-first Roon to Discord Rich Presence desktop companion",
+  "author": "Suvir Potdar <hello@suvir.net>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Suvir0/roon-rich-presence.git"
+  },
+  "homepage": "https://github.com/Suvir0/roon-rich-presence#readme",
+  "bugs": {
+    "url": "https://github.com/Suvir0/roon-rich-presence/issues"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @rrp/desktop",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm test --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present",
+    "audit:prod": "npm audit --omit=dev --audit-level=high",
+    "secrets:check": "node scripts/check-sensitive-files.mjs",
+    "package": "npm run package -w @rrp/desktop",
+    "package:mac": "npm run package:mac -w @rrp/desktop",
+    "package:win": "npm run package:win -w @rrp/desktop",
+    "package:linux": "npm run package:linux -w @rrp/desktop"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "26.2.0",
+    "eslint": "10.8.1",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "globals": "17.11.0",
+    "prettier": "3.9.6",
+    "typescript": "5.9.2",
+    "typescript-eslint": "8.67.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
