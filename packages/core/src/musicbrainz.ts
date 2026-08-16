@@ -37,8 +37,34 @@ export function normalizeMetadata(value: string): string {
     .replace(/\s+/g, ' ');
 }
 
+const BRACKETED_ARTWORK_EDITION =
+  /\s*[([]\s*(?:explicit(?:\s+version)?|clean(?:\s+version)?|(?:super\s+)?deluxe(?:\s+edition)?|expanded(?:\s+edition)?|special\s+edition|digital\s+edition|bonus\s+tracks?(?:\s+(?:version|edition))?|(?:(?:\d{4}|\d+(?:st|nd|rd|th))\s+)?anniversary(?:\s+edition)?|(?:\d{4}\s+)?remaster(?:ed)?(?:\s+\d{4})?)\s*[)\]]\s*$/i;
+const SEPARATED_ARTWORK_EDITION =
+  /\s*[-–—:]\s*(?:explicit(?:\s+version)?|clean(?:\s+version)?|(?:super\s+)?deluxe(?:\s+edition)?|expanded(?:\s+edition)?|special\s+edition|digital\s+edition|bonus\s+tracks?(?:\s+(?:version|edition))?|(?:(?:\d{4}|\d+(?:st|nd|rd|th))\s+)?anniversary(?:\s+edition)?|(?:\d{4}\s+)?remaster(?:ed)?(?:\s+\d{4})?)\s*$/i;
+const UNSEPARATED_ARTWORK_EDITION =
+  /\s+(?:explicit(?:\s+version)?|clean(?:\s+version)?|(?:super\s+)?deluxe\s+edition|expanded\s+edition|special\s+edition|digital\s+edition|bonus\s+tracks?(?:\s+(?:version|edition))|(?:(?:\d{4}|\d+(?:st|nd|rd|th))\s+)?anniversary\s+edition|(?:\d{4}\s+)?remaster(?:ed)?(?:\s+\d{4})?)\s*$/i;
+
+/**
+ * Removes trailing playback-service edition labels that are not part of the canonical
+ * MusicBrainz release-group title. The original album value remains untouched for display.
+ */
+export function albumForArtwork(value: string): string {
+  const original = value.trim();
+  let album = original;
+  for (let pass = 0; pass < 4; pass += 1) {
+    const stripped = album
+      .replace(BRACKETED_ARTWORK_EDITION, '')
+      .replace(SEPARATED_ARTWORK_EDITION, '')
+      .replace(UNSEPARATED_ARTWORK_EDITION, '')
+      .trim();
+    if (!stripped || stripped === album) break;
+    album = stripped;
+  }
+  return album || original;
+}
+
 export function artworkCacheKey(artist: string, album: string): string {
-  return `${normalizeMetadata(artist)}\u0000${normalizeMetadata(album)}`;
+  return `${normalizeMetadata(artist)}\u0000${normalizeMetadata(albumForArtwork(album))}`;
 }
 
 /** Returns null for equally ranked editions because choosing would risk displaying the wrong cover. */
@@ -48,7 +74,7 @@ export function selectArtworkMatch(
   candidates: readonly MusicBrainzCandidate[]
 ): ArtworkMatch | undefined {
   const normalizedArtist = normalizeMetadata(artist);
-  const normalizedAlbum = normalizeMetadata(album);
+  const normalizedAlbum = normalizeMetadata(albumForArtwork(album));
   if (!normalizedArtist || !normalizedAlbum) return undefined;
 
   const eligible = candidates
@@ -58,7 +84,7 @@ export function selectArtworkMatch(
         candidate.score >= 95 &&
         candidate.hasFrontArtwork !== false &&
         normalizeMetadata(candidate.artist) === normalizedArtist &&
-        normalizeMetadata(candidate.title) === normalizedAlbum
+        normalizeMetadata(albumForArtwork(candidate.title)) === normalizedAlbum
     )
     .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id));
   const best = eligible[0];
@@ -85,7 +111,7 @@ export function selectMusicBrainzReleaseGroup(
   candidates: readonly MusicBrainzCandidate[]
 ): MusicBrainzReleaseGroupMatch | undefined {
   const normalizedArtist = normalizeMetadata(artist);
-  const normalizedAlbum = normalizeMetadata(album);
+  const normalizedAlbum = normalizeMetadata(albumForArtwork(album));
   if (!normalizedArtist || !normalizedAlbum) return undefined;
 
   const eligible = candidates
@@ -94,7 +120,7 @@ export function selectMusicBrainzReleaseGroup(
       (candidate) =>
         candidate.score >= 95 &&
         normalizeMetadata(candidate.artist) === normalizedArtist &&
-        normalizeMetadata(candidate.title) === normalizedAlbum
+        normalizeMetadata(albumForArtwork(candidate.title)) === normalizedAlbum
     )
     .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id));
   const best = eligible[0];

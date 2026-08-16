@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ARTWORK_HIT_TTL_MS,
   ARTWORK_MISS_TTL_MS,
+  albumForArtwork,
   artworkCacheKey,
   isArtworkCacheEntryFresh,
   normalizeMetadata,
@@ -15,6 +16,25 @@ describe('MusicBrainz matching', () => {
   it('normalizes case, accents, punctuation, and whitespace', () => {
     expect(normalizeMetadata('  Björk: Début! ')).toBe('bjork debut');
     expect(artworkCacheKey('Artist', 'Album')).toBe('artist\u0000album');
+  });
+
+  it('removes trailing edition labels from artwork lookup titles', () => {
+    expect(albumForArtwork('After Hours (Explicit)')).toBe('After Hours');
+    expect(albumForArtwork('Album — Deluxe Edition [Explicit]')).toBe('Album');
+    expect(albumForArtwork('Rumours (2013 Remaster)')).toBe('Rumours');
+    expect(albumForArtwork('The Deluxe')).toBe('The Deluxe');
+    expect(albumForArtwork('Explicit')).toBe('Explicit');
+    expect(artworkCacheKey('The Weeknd', 'After Hours (Explicit)')).toBe(
+      'the weeknd\u0000after hours'
+    );
+  });
+
+  it('matches a canonical release title to a Roon title with an edition label', () => {
+    expect(
+      selectMusicBrainzReleaseGroup('The Weeknd', 'After Hours (Explicit)', [
+        { id: 'release-group-id', artist: 'The Weeknd', title: 'After Hours', score: 100 }
+      ])
+    ).toEqual({ releaseGroupId: 'release-group-id' });
   });
 
   it('requires an exact normalized high-confidence result with front art', () => {

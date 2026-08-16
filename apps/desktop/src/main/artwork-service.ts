@@ -1,5 +1,10 @@
 import { app } from 'electron';
-import { artworkCacheKey, primaryArtistForArtwork, selectMusicBrainzReleaseGroup } from '@rrp/core';
+import {
+  albumForArtwork,
+  artworkCacheKey,
+  primaryArtistForArtwork,
+  selectMusicBrainzReleaseGroup
+} from '@rrp/core';
 import { copyFile, mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
@@ -34,6 +39,12 @@ const SUCCESS_TTL = 30 * 24 * 60 * 60 * 1_000;
 const MISS_TTL = 24 * 60 * 60 * 1_000;
 const MAX_CACHE_ENTRIES = 2_000;
 const MAX_RESPONSE_BYTES = 512 * 1_024;
+const LOOKUP_RETRY_DELAY_MS = 1_100;
+
+interface ArtworkServiceDependencies {
+  fetch: typeof fetch;
+  sleep(milliseconds: number): Promise<void>;
+}
 
 function getArtistCredit(value: unknown): string {
   if (!Array.isArray(value)) return '';
@@ -52,6 +63,15 @@ export class ArtworkService {
   private readonly cache = new Map<string, CacheEntry>();
   private lastRequestAt = 0;
   private queue: Promise<unknown> = Promise.resolve();
+  private readonly dependencies: ArtworkServiceDependencies;
+
+  constructor(dependencies: Partial<ArtworkServiceDependencies> = {}) {
+    this.dependencies = {
+      fetch: (input, init) => fetch(input, init),
+      sleep: (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)),
+      ...dependencies
+    };
+  }
 
   async initialize(): Promise<void> {
     await this.migrateLegacyCache();
@@ -79,9 +99,9 @@ export class ArtworkService {
       return { status: 'miss', message: 'Artist and album are required for artwork matching' };
     }
     const lookupArtist = primaryArtistForArtwork(artist);
-    // v2 invalidates misses written by the original matcher, which never followed
-    // Cover Art Archive redirects and treated Roon's full credit line as one artist.
-    const key = `v2:${artworkCacheKey(lookupArtist, album)}`;
+    const lookupAlbum = albumForArtwork(album);
+    // v3 invalidates cached misses from before Roon edition suffixes were canonicalized.
+    const key = `v3:${artworkCacheKey(lookupArtist, lookupAlbum)}`;
     if (!key.replace('\u0000', '')) {
       return { status: 'miss', message: 'Artist and album are required for artwork matching' };
     }
@@ -94,9 +114,9 @@ export class ArtworkService {
 
     const task = this.queue.then(async () => {
       const delay = Math.max(0, 1_050 - (Date.now() - this.lastRequestAt));
-      if (delay > 0) await new Promise((resolve) => setTimeout(resolve, delay));
+      if (delay > 0) await this.dependencies.sleep(delay);
       this.lastRequestAt = Date.now();
-      const result = await this.lookup(lookupArtist, album);
+      const result = await this.lookup(lookupArtist, lookupAlbum);
       // Network/service failures are not negative matches and must remain retryable.
       if (result.status !== 'error') {
         this.cache.set(key, {
@@ -124,7 +144,7 @@ export class ArtworkService {
     let groups: MusicBrainzReleaseGroup[] | undefined;
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
-        const response = await fetch(url, {
+        const response = await this.dependencies.fetch(url, {
           headers: {
             Accept: 'application/json',
             'User-Agent': `RoonRichPresence/0.1 (${contact})`
@@ -153,6 +173,7 @@ export class ArtworkService {
             message: describeLookupError('MusicBrainz', error)
           };
         }
+        await this.dependencies.sleep(LOOKUP_RETRY_DELAY_MS);
       }
     }
 
@@ -184,7 +205,7 @@ export class ArtworkService {
     const archiveUrl = new URL(`https://coverartarchive.org/release-group/${releaseGroupId}`);
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
-        const response = await fetch(archiveUrl, {
+        const response = await this.dependencies.fetch(archiveUrl, {
           headers: { Accept: 'application/json' },
           signal: AbortSignal.timeout(5_000),
           redirect: 'follow'
@@ -219,6 +240,7 @@ export class ArtworkService {
             message: describeLookupError('Cover Art Archive', error)
           };
         }
+        await this.dependencies.sleep(LOOKUP_RETRY_DELAY_MS);
       }
     }
     return { status: 'error', message: 'Artwork lookup failed unexpectedly' };

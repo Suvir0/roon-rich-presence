@@ -15,7 +15,7 @@ vi.mock('electron', () => ({
   }
 }));
 
-import { BoundedDiagnosticLog, redactDiagnostic } from './app-controller';
+import { artworkRetryDelayMs, BoundedDiagnosticLog, redactDiagnostic } from './app-controller';
 
 const temporaryDirectories: string[] = [];
 
@@ -61,6 +61,14 @@ describe('redactDiagnostic', () => {
     expect(redactDiagnostic('Discord bridge exited (code 70); retrying')).toBe(
       'Discord bridge exited (code 70); retrying'
     );
+  });
+});
+
+describe('artwork retry policy', () => {
+  it('backs off repeated failures and caps retries at one minute', () => {
+    expect([1, 2, 3, 4, 20].map(artworkRetryDelayMs)).toEqual([
+      5_000, 15_000, 60_000, 60_000, 60_000
+    ]);
   });
 });
 
