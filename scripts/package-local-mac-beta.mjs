@@ -96,10 +96,10 @@ try {
 
   const manifest = JSON.parse(await readFile(join(repoRoot, 'package.json'), 'utf8'));
   const releaseDirectory = join(repoRoot, 'release');
-  const assetNames = [
-    `Roon Rich Presence-Beta-${manifest.version}-universal.dmg`,
-    `Roon Rich Presence-Beta-${manifest.version}-universal.zip`
-  ];
+  const assetNames = ['arm64', 'x64'].flatMap((arch) => [
+    `Roon Rich Presence-Beta-${manifest.version}-${arch}.dmg`,
+    `Roon Rich Presence-Beta-${manifest.version}-${arch}.zip`
+  ]);
   const checksumLines = [];
   for (const assetName of assetNames) {
     checksumLines.push(`${await sha256(join(releaseDirectory, assetName))}  ${assetName}`);

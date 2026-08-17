@@ -48,7 +48,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: macos-latest, label: mac-universal, archive: bridge-mac }
+          - { os: macos-latest, label: mac, archive: bridge-mac }
           - { os: windows-latest, label: windows-x64, archive: bridge-win }
           - { os: ubuntu-latest, label: linux-x64, archive: bridge-linux }
     steps:
@@ -127,7 +127,7 @@ jobs:
         include:
           - {
               os: macos-latest,
-              label: mac-universal-beta,
+              label: mac-beta,
               bridge: bridge-mac,
               command: 'package:mac:beta'
             }

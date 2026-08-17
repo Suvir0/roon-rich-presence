@@ -81,7 +81,6 @@ export interface AppSnapshot {
   discord: { status: ConnectionStatus; message: string };
   artwork: { status: ConnectionStatus; message: string; url?: string };
   securityWarning?: string;
-  diagnostics: string[];
 }
 
 export interface RrpApi {

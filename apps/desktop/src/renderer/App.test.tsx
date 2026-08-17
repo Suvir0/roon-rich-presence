@@ -46,8 +46,7 @@ const snapshot = (onboardingComplete: boolean) => ({
   },
   roon: { status: 'connected' as const, message: 'Connected', serverName: 'Roon Server' },
   discord: { status: 'connected' as const, message: 'Connected' },
-  artwork: { status: 'connected' as const, message: 'Matched' },
-  diagnostics: []
+  artwork: { status: 'connected' as const, message: 'Matched' }
 });
 
 function installApi(onboardingComplete: boolean) {
@@ -117,6 +116,14 @@ function button(label: RegExp) {
   return match;
 }
 
+function toggle(label: RegExp) {
+  const match = [...container.querySelectorAll('label')]
+    .find((item) => label.test(item.textContent ?? ''))
+    ?.querySelector('input');
+  if (!match) throw new Error(`Toggle ${String(label)} was not found`);
+  return match;
+}
+
 async function click(element: HTMLElement) {
   await act(async () => element.click());
 }
@@ -130,19 +137,15 @@ async function input(element: HTMLInputElement, value: string) {
 }
 
 describe('renderer experience', () => {
-  it('guides the user through all four onboarding stages', async () => {
+  it('shows the whole setup in one screen and finishes onboarding', async () => {
     const { completeOnboarding } = installApi(false);
     await renderApp();
-    expect(container.textContent).toContain('Your music, beautifully present.');
-    expect(container.querySelector('[data-testid="window-drag-region"]')).toBeFalsy();
+    expect(container.textContent).toContain('Set up Roon Presence');
+    expect(container.textContent).toContain('Connect Roon');
+    expect(container.textContent).toContain('Choose a zone');
+    expect(container.textContent).toContain('Discord');
     expect(container.textContent).toContain('Use MusicBrainz artwork matching');
 
-    await click(button(/continue/i));
-    expect(container.textContent).toContain('Your Roon Server is connected.');
-    await click(button(/continue/i));
-    expect(container.textContent).toContain('Which room speaks for you?');
-    await click(button(/continue/i));
-    expect(container.textContent).toContain('Discord is ready.');
     await click(button(/open dashboard/i));
 
     expect(completeOnboarding).toHaveBeenCalledOnce();
@@ -152,7 +155,6 @@ describe('renderer experience', () => {
   it('makes automatic discovery and manual connection explicit', async () => {
     const { updateSettings } = installApi(false);
     await renderApp();
-    await click(button(/continue/i));
 
     await click(button(/manual address/i));
     const host = container.querySelector<HTMLInputElement>('input[aria-label="Roon Server host"]');
@@ -187,7 +189,6 @@ describe('renderer experience', () => {
       }
     });
     await renderApp();
-    await click(button(/^settings$/i));
 
     expect(container.textContent).toContain('Local Network access is blocked');
     await click(button(/open local network settings/i));
@@ -211,7 +212,6 @@ describe('renderer experience', () => {
       return () => undefined;
     });
     await renderApp();
-    await click(button(/^settings$/i));
     expect(
       container.querySelector<HTMLInputElement>('input[aria-label="Roon Server host"]')?.value
     ).toBe('192.168.50.2');
@@ -233,7 +233,6 @@ describe('renderer experience', () => {
       return () => undefined;
     });
     await renderApp();
-    await click(button(/^settings$/i));
     const host = container.querySelector<HTMLInputElement>('input[aria-label="Roon Server host"]')!;
     await input(host, 'edited.local');
 
@@ -242,25 +241,17 @@ describe('renderer experience', () => {
     expect(container.querySelector('input[aria-label="Roon Server host"]')).toBe(host);
   });
 
-  it('renders playback and persists dashboard toggles', async () => {
+  it('renders playback and persists preference toggles', async () => {
     const { updateSettings } = installApi(true);
     await renderApp();
     expect(container.textContent).toContain('Midnight City');
     expect(container.textContent).toContain('M83');
 
-    const albumToggle = [...container.querySelectorAll('label')]
-      .find((label) => label.textContent?.includes('Album'))
-      ?.querySelector('input');
-    expect(albumToggle).toBeTruthy();
-    await click(albumToggle!);
+    await click(toggle(/^Album/));
     expect(updateSettings).toHaveBeenCalledWith({ showAlbum: false });
 
-    const zoneToggle = [...container.querySelectorAll('label')]
-      .find((label) => label.textContent?.includes('Zone'))
-      ?.querySelector('input');
-    expect(zoneToggle).toBeTruthy();
     expect(container.textContent).toContain('Living room');
-    await click(zoneToggle!);
+    await click(toggle(/^Zone/));
     expect(updateSettings).toHaveBeenCalledWith({ showZone: false });
   });
 
@@ -289,16 +280,13 @@ describe('renderer experience', () => {
     updateSettings.mockRejectedValueOnce(new Error('disk full'));
     await renderApp();
 
-    const albumToggle = [...container.querySelectorAll('label')]
-      .find((label) => label.textContent?.includes('Album'))
-      ?.querySelector('input');
-    expect(albumToggle).toBeTruthy();
-    expect(albumToggle!.checked).toBe(true);
+    const albumToggle = toggle(/^Album/);
+    expect(albumToggle.checked).toBe(true);
 
-    await click(albumToggle!);
+    await click(albumToggle);
     await act(async () => Promise.resolve());
 
-    expect(albumToggle!.checked).toBe(true);
+    expect(albumToggle.checked).toBe(true);
     expect(container.textContent).toContain('previous choice was restored');
   });
 
@@ -311,12 +299,8 @@ describe('renderer experience', () => {
       .mockImplementationOnce(() => second.promise);
     await renderApp();
 
-    const album = [...container.querySelectorAll('label')]
-      .find((label) => label.textContent?.includes('Album'))!
-      .querySelector('input')!;
-    const zone = [...container.querySelectorAll('label')]
-      .find((label) => label.textContent?.includes('Zone'))!
-      .querySelector('input')!;
+    const album = toggle(/^Album/);
+    const zone = toggle(/^Zone/);
     await click(album);
     await click(zone);
 
@@ -343,12 +327,8 @@ describe('renderer experience', () => {
       .mockImplementationOnce(() => first.promise)
       .mockImplementationOnce(() => second.promise);
     await renderApp();
-    const album = [...container.querySelectorAll('label')]
-      .find((label) => label.textContent?.includes('Album'))!
-      .querySelector('input')!;
-    const zone = [...container.querySelectorAll('label')]
-      .find((label) => label.textContent?.includes('Zone'))!
-      .querySelector('input')!;
+    const album = toggle(/^Album/);
+    const zone = toggle(/^Zone/);
     await click(album);
     await click(zone);
 
@@ -370,21 +350,17 @@ describe('renderer experience', () => {
     completeOnboarding.mockRejectedValueOnce(new Error('write failed'));
     await renderApp();
 
-    await click(button(/continue/i));
-    await click(button(/continue/i));
-    await click(button(/continue/i));
     await click(button(/open dashboard/i));
     await act(async () => Promise.resolve());
 
-    expect(container.textContent).toContain('Discord is ready.');
+    expect(container.textContent).toContain('Set up Roon Presence');
     expect(container.textContent).toContain('Setup could not be completed');
-    expect(container.textContent).not.toContain('Presence details');
+    expect(container.textContent).not.toContain('Now playing');
   });
 
   it('persists a selected playback zone', async () => {
     const { updateSettings } = installApi(true);
     await renderApp();
-    await click(button(/^settings$/i));
     const automaticZone = button(/follow the active zone/i);
     expect(automaticZone.getAttribute('role')).toBe('radio');
     expect(automaticZone.getAttribute('aria-checked')).toBe('false');
@@ -395,7 +371,6 @@ describe('renderer experience', () => {
   it('requires confirmation before forgetting Roon', async () => {
     const { forgetRoon } = installApi(true);
     await renderApp();
-    await click(button(/^settings$/i));
 
     await click(button(/forget roon authorization/i));
     expect(forgetRoon).not.toHaveBeenCalled();

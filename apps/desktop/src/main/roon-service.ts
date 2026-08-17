@@ -646,13 +646,13 @@ export class RoonService {
       }
     );
     if (generation !== this.generation || this.paired || this.manualFallbackStopped) return;
+    // A non-empty result already triggered enqueueEndpoint via the onOpen callback above.
     if (openPorts.length === 0) {
       this.setSnapshot({
         status: 'searching',
         message: `No Roon API endpoint was reachable at ${host}. Check Local Network access and the server address.`,
         reason: 'endpoint-unreachable'
       });
-      return;
     }
   }
 

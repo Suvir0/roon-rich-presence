@@ -14,8 +14,8 @@
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "test": "vitest run",
     "package": "npm run build && electron-builder",
-    "package:mac": "npm run build && electron-builder --mac --universal",
-    "package:mac:beta": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac --universal -c.mac.identity=-",
+    "package:mac": "npm run build && electron-builder --mac --x64 --arm64",
+    "package:mac:beta": "npm run build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac --x64 --arm64 -c.mac.identity=-",
     "package:win": "npm run build && electron-builder --win --x64",
     "package:linux": "npm run build && electron-builder --linux --x64"
   },
@@ -25,10 +25,7 @@
     "node-roon-api": "github:RoonLabs/node-roon-api#055dae6c2ac45b6c738aa3b9e5ac1fd722ed60e8",
     "node-roon-api-image": "github:RoonLabs/node-roon-api-image#a5f0efaf2dfb5457e91abe326c3a40d865131d32",
     "node-roon-api-status": "github:RoonLabs/node-roon-api-status#504c918d6da267e03fbb4337befa71ca3d3c7526",
-    "node-roon-api-transport": "github:RoonLabs/node-roon-api-transport#2ee60008a4cdb90c34ff3de58bb4b949067f1d20",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
-    "zod": "4.4.3"
+    "node-roon-api-transport": "github:RoonLabs/node-roon-api-transport#2ee60008a4cdb90c34ff3de58bb4b949067f1d20"
   },
   "devDependencies": {
     "@electron-toolkit/utils": "4.0.0",
@@ -41,6 +38,8 @@
     "electron-builder": "26.15.3",
     "electron-vite": "5.0.0",
     "jsdom": "30.0.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "vite": "7.3.6",
     "vitest": "3.2.7"
   }
