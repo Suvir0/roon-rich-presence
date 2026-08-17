@@ -1,4 +1,4 @@
-import type { AppSnapshot, ConnectionStatus, RoonConnectionReason } from '../shared/contracts';
+import type { AppSnapshot, ConnectionStatus, RoonConnectionReason, ThemeMode } from '../shared/contracts';
 
 export type PlaybackKind = 'playing' | 'paused' | 'loading' | 'stopped';
 
@@ -19,6 +19,7 @@ export interface UiZone {
 }
 
 export interface UiSettings {
+  theme: ThemeMode;
   presenceEnabled: boolean;
   zoneMode: 'selected' | 'automatic';
   selectedZoneId: string | undefined;
@@ -61,6 +62,7 @@ export interface UiSnapshot {
 export const EMPTY_SNAPSHOT: UiSnapshot = {
   onboardingComplete: false,
   settings: {
+    theme: 'light',
     presenceEnabled: true,
     zoneMode: 'selected',
     selectedZoneId: undefined,
@@ -89,6 +91,7 @@ export function toUiSnapshot(snapshot: AppSnapshot): UiSnapshot {
   return {
     onboardingComplete: settings.onboardingComplete,
     settings: {
+      theme: settings.theme,
       presenceEnabled: settings.presenceEnabled,
       zoneMode: settings.zoneMode,
       selectedZoneId: settings.selectedZoneId,

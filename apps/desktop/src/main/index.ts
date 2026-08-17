@@ -63,6 +63,13 @@ let isQuitting = false;
 let lastTrayMenuKey = '';
 let localNetworkAccessRequest: Promise<void> | undefined;
 
+// Mirrors the --color-bg token for each theme in styles.css, so the window
+// never flashes the wrong background color while the renderer loads.
+const BACKGROUND_BY_THEME: Record<'light' | 'dark', string> = {
+  light: '#f3f2f2',
+  dark: '#1c1a17'
+};
+
 function requestLocalNetworkAccessOnce(): Promise<void> {
   localNetworkAccessRequest ??= requestLocalNetworkAccess();
   return localNetworkAccessRequest;
@@ -179,13 +186,14 @@ function showWindow(): void {
 }
 
 function createWindow(): BrowserWindow {
+  const theme = controller?.getSnapshot().settings.theme ?? 'light';
   const created = new BrowserWindow({
-    width: 560,
-    height: 720,
-    minWidth: 480,
-    minHeight: 560,
+    width: 1040,
+    height: 880,
+    minWidth: 900,
+    minHeight: 720,
     show: false,
-    backgroundColor: '#0a0b10',
+    backgroundColor: BACKGROUND_BY_THEME[theme],
     title: 'Roon Rich Presence',
     titleBarStyle: 'default',
     webPreferences: {
@@ -232,7 +240,9 @@ const RENDERER_MIME_TYPES: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
-  '.svg': 'image/svg+xml'
+  '.svg': 'image/svg+xml',
+  '.woff2': 'font/woff2',
+  '.png': 'image/png'
 };
 
 function registerProtocol(): void {
@@ -329,7 +339,10 @@ async function start(): Promise<void> {
   registerIpc();
   controller.subscribe((snapshot) => {
     rebuildTray(snapshot);
-    if (window && !window.isDestroyed()) window.webContents.send(IPC_CHANNELS.snapshot, snapshot);
+    if (window && !window.isDestroyed()) {
+      window.webContents.send(IPC_CHANNELS.snapshot, snapshot);
+      window.setBackgroundColor(BACKGROUND_BY_THEME[snapshot.settings.theme]);
+    }
   });
   tray = new Tray(createTrayIcon());
   if (process.platform === 'darwin') tray.setIgnoreDoubleClickEvents(true);

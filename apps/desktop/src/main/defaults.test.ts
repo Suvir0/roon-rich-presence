@@ -1,10 +1,23 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_SETTINGS, sanitizeSettings } from './defaults';
+import { DEFAULT_SETTINGS, parseSettingsPatch, sanitizeSettings } from './defaults';
 
 describe('sanitizeSettings', () => {
   it('returns defaults for null input', () => {
     expect(sanitizeSettings(null)).toEqual(DEFAULT_SETTINGS);
     expect(DEFAULT_SETTINGS.schemaVersion).toBe(2);
+  });
+
+  it('defaults to the light theme', () => {
+    expect(DEFAULT_SETTINGS.theme).toBe('light');
+  });
+
+  it('accepts a saved dark theme', () => {
+    expect(sanitizeSettings({ theme: 'dark' }).theme).toBe('dark');
+  });
+
+  it('falls back to the default theme for an invalid value', () => {
+    expect(sanitizeSettings({ theme: 'blue' }).theme).toBe('light');
+    expect(sanitizeSettings({ theme: 1 }).theme).toBe('light');
   });
 
   it('migrates version 1 settings to host-only connection without losing preferences', () => {
@@ -57,5 +70,19 @@ describe('sanitizeSettings', () => {
 
   it('disables automatic updates for unsigned beta builds', () => {
     expect(sanitizeSettings({ automaticUpdates: true }).automaticUpdates).toBe(false);
+  });
+});
+
+describe('parseSettingsPatch', () => {
+  it('accepts a valid theme patch', () => {
+    expect(parseSettingsPatch({ theme: 'dark' })).toEqual({ theme: 'dark' });
+  });
+
+  it('rejects an invalid theme value', () => {
+    expect(() => parseSettingsPatch({ theme: 'blue' })).toThrow('Invalid value for settings key: theme');
+  });
+
+  it('rejects an unknown key', () => {
+    expect(() => parseSettingsPatch({ notARealKey: true })).toThrow('Unknown settings key: notARealKey');
   });
 });

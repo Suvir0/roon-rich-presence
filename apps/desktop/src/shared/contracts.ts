@@ -31,8 +31,11 @@ export interface ZoneSummary {
   state: PlaybackStatus;
 }
 
+export type ThemeMode = 'light' | 'dark';
+
 export interface AppSettings {
   schemaVersion: 2;
+  theme: ThemeMode;
   presenceEnabled: boolean;
   zoneMode: 'selected' | 'automatic';
   selectedZoneId?: string;

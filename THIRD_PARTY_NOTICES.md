@@ -18,4 +18,8 @@ Version 0.1.3 is built and tested against Discord Social SDK 1.10.18687. The SDK
 
 Optional album matching queries MusicBrainz data and uses front-cover URLs from the Cover Art Archive. Their data, service terms, and individual cover images may have separate licenses. The app does not claim ownership of returned metadata or artwork and does not redistribute a bulk artwork collection.
 
+## Cormorant Garamond and Lora fonts
+
+The interface typefaces Cormorant Garamond and Lora are © their respective designers and are licensed under the SIL Open Font License, Version 1.1 (https://openfontlicense.org). Variable-font woff2 files are vendored under `apps/desktop/src/renderer/fonts/` and served locally; the application never fetches fonts from Google Fonts or any other network host.
+
 Run the release SBOM and license-notice generation steps for every release. A release must be blocked if a required notice is absent or a dependency license is incompatible with distribution.

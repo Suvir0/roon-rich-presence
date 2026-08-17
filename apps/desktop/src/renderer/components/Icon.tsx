@@ -1,6 +1,15 @@
 import type { ReactNode } from 'react';
 
-export type IconName = 'wave' | 'home' | 'settings' | 'shield' | 'copy' | 'external' | 'chevron';
+export type IconName =
+  | 'wave'
+  | 'home'
+  | 'settings'
+  | 'shield'
+  | 'copy'
+  | 'external'
+  | 'chevron'
+  | 'sun'
+  | 'moon';
 
 const PATHS: Record<IconName, ReactNode> = {
   wave: <path d="M3 12h3l2-7 4 14 3-11 2 4h4" />,
@@ -24,7 +33,14 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" />
     </>
   ),
-  chevron: <path d="m6 9 6 6 6-6" />
+  chevron: <path d="m6 9 6 6 6-6" />,
+  sun: (
+    <>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </>
+  ),
+  moon: <path d="M20.5 14.7A8.5 8.5 0 1 1 9.3 3.5a7 7 0 0 0 11.2 11.2Z" />
 };
 
 export function Icon({ name }: { name: IconName }) {

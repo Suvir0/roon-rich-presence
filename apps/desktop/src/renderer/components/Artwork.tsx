@@ -8,15 +8,11 @@ export function Artwork({ snapshot }: { snapshot: UiSnapshot }) {
   const [brokenUrl, setBrokenUrl] = useState<string>();
   const broken = Boolean(artworkUrl && artworkUrl === brokenUrl);
   return (
-    <div className="artwork">
+    <div className="plate cover-frame">
       {artworkUrl && !broken ? (
-        <img
-          src={artworkUrl}
-          alt={`Cover art for ${title}`}
-          onError={() => setBrokenUrl(artworkUrl)}
-        />
+        <img src={artworkUrl} alt={`Cover art for ${title}`} onError={() => setBrokenUrl(artworkUrl)} />
       ) : (
-        <div className="artwork-fallback">
+        <div className="plate-placeholder">
           <Icon name="wave" />
         </div>
       )}

@@ -3,13 +3,14 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AppSnapshot } from '../shared/contracts';
+import type { AppSnapshot, RoonConnectionReason } from '../shared/contracts';
 import App from './App';
 
 const snapshot = (onboardingComplete: boolean) => ({
   version: '0.1.0',
   settings: {
     schemaVersion: 2 as const,
+    theme: 'light' as const,
     presenceEnabled: true,
     zoneMode: 'selected' as const,
     selectedZoneId: 'living-room',
@@ -50,7 +51,23 @@ const snapshot = (onboardingComplete: boolean) => ({
 });
 
 function installApi(onboardingComplete: boolean) {
-  const updateSettings = vi.fn().mockResolvedValue(snapshot(onboardingComplete));
+  // Echoes the patch back onto the current settings, like the real IPC handler does,
+  // so tests that inspect post-resolution state (e.g. the theme toggle) aren't at the
+  // mercy of a fixed canned response reverting an optimistic update.
+  let current: AppSnapshot = snapshot(onboardingComplete);
+  const updateSettings = vi.fn((patch: Record<string, unknown>) => {
+    const { manualRoonPort, ...rest } = patch;
+    const settings: AppSnapshot['settings'] = { ...current.settings, ...rest };
+    if ('manualRoonPort' in patch) {
+      if (manualRoonPort === null || manualRoonPort === undefined) {
+        delete settings.manualRoonPort;
+      } else {
+        settings.manualRoonPort = manualRoonPort as number;
+      }
+    }
+    current = { ...current, settings };
+    return Promise.resolve(current);
+  });
   const completeOnboarding = vi.fn().mockResolvedValue(snapshot(true));
   const forgetRoon = vi.fn().mockResolvedValue(snapshot(onboardingComplete));
   window.rrp = {
@@ -100,6 +117,7 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.unmount());
   container.remove();
+  delete document.documentElement.dataset.theme;
   delete window.rrp;
 });
 
@@ -109,19 +127,36 @@ async function renderApp() {
 }
 
 function button(label: RegExp) {
-  const match = [...container.querySelectorAll('button')].find((item) =>
-    label.test(item.textContent ?? '')
+  const match = [...container.querySelectorAll('button')].find(
+    (item) => label.test(item.textContent ?? '') || label.test(item.getAttribute('aria-label') ?? '')
   );
   if (!match) throw new Error(`Button ${String(label)} was not found`);
   return match;
 }
 
+// Toggle switches are role="switch" buttons (see Toggle.tsx) — not <input> checkboxes.
 function toggle(label: RegExp) {
-  const match = [...container.querySelectorAll('label')]
-    .find((item) => label.test(item.textContent ?? ''))
-    ?.querySelector('input');
+  const match = [...container.querySelectorAll<HTMLButtonElement>('button[role="switch"]')].find(
+    (item) => label.test(item.textContent ?? '')
+  );
   if (!match) throw new Error(`Toggle ${String(label)} was not found`);
   return match;
+}
+
+// Radio rows (zone chooser, connection method) are <label> elements wrapping a
+// native <input type="radio">. Clicking the label forwards to its input.
+function radioLabel(label: RegExp) {
+  const match = [...container.querySelectorAll<HTMLLabelElement>('label')].find((item) =>
+    label.test(item.textContent ?? '')
+  );
+  if (!match) throw new Error(`Radio ${String(label)} was not found`);
+  return match;
+}
+
+function radioInput(label: RegExp) {
+  const input = radioLabel(label).querySelector<HTMLInputElement>('input[type="radio"]');
+  if (!input) throw new Error(`Radio input ${String(label)} was not found`);
+  return input;
 }
 
 async function click(element: HTMLElement) {
@@ -143,10 +178,10 @@ describe('renderer experience', () => {
     expect(container.textContent).toContain('Set up Roon Presence');
     expect(container.textContent).toContain('Connect Roon');
     expect(container.textContent).toContain('Choose a zone');
-    expect(container.textContent).toContain('Discord');
+    expect(container.textContent).toContain('Album artwork');
     expect(container.textContent).toContain('Use MusicBrainz artwork matching');
 
-    await click(button(/open dashboard/i));
+    await click(button(/open the dashboard/i));
 
     expect(completeOnboarding).toHaveBeenCalledOnce();
     expect(container.textContent).toContain('Now playing');
@@ -156,8 +191,8 @@ describe('renderer experience', () => {
     const { updateSettings } = installApi(false);
     await renderApp();
 
-    await click(button(/manual address/i));
-    const host = container.querySelector<HTMLInputElement>('input[aria-label="Roon Server host"]');
+    await click(radioLabel(/manual address/i));
+    const host = container.querySelector<HTMLInputElement>('#rrp-host');
     expect(host).toBeTruthy();
     expect(container.textContent).toContain('Use this when automatic discovery is blocked');
     expect(updateSettings).not.toHaveBeenCalled();
@@ -170,12 +205,12 @@ describe('renderer experience', () => {
       manualRoonPort: null
     });
 
-    await click(button(/automatic discovery/i));
+    await click(radioLabel(/automatic discovery/i));
     expect(updateSettings).toHaveBeenLastCalledWith({
       manualRoonHost: '',
       manualRoonPort: null
     });
-    expect(container.querySelector('input[aria-label="Roon Server host"]')).toBeFalsy();
+    expect(container.querySelector('#rrp-host')).toBeFalsy();
   });
 
   it('shows an actionable Local Network recovery state', async () => {
@@ -191,8 +226,34 @@ describe('renderer experience', () => {
     await renderApp();
 
     expect(container.textContent).toContain('Local Network access is blocked');
-    await click(button(/open local network settings/i));
+    await click(button(/open settings/i));
     expect(window.rrp!.openLocalNetworkSettings).toHaveBeenCalledOnce();
+  });
+
+  it.each<[RoonConnectionReason, string]>([
+    ['local-network-blocked', 'Local Network access is blocked'],
+    ['discovery-timeout', 'No Roon Server was found'],
+    ['endpoint-unreachable', 'The saved Roon Server is unreachable'],
+    ['authorization-required', 'Roon Server needs to enable this extension'],
+    ['reconnecting', 'Reconnecting to Roon Server']
+  ])('shows recovery copy for %s', async (reason, expectedTitle) => {
+    installApi(true);
+    window.rrp!.getSnapshot = vi.fn().mockResolvedValue({
+      ...snapshot(true),
+      roon: { status: 'error' as const, reason, message: 'Error' }
+    });
+    await renderApp();
+    expect(container.textContent).toContain(expectedTitle);
+    // Only the local-network-blocked reason has an actionable button — the
+    // others are informational (nothing app-side to open).
+    const settingsButton = [...container.querySelectorAll('button')].find((item) =>
+      /open settings/i.test(item.textContent ?? '')
+    );
+    if (reason === 'local-network-blocked') {
+      expect(settingsButton).toBeTruthy();
+    } else {
+      expect(settingsButton).toBeFalsy();
+    }
   });
 
   it('synchronizes a saved manual form after an authoritative forget', async () => {
@@ -212,12 +273,10 @@ describe('renderer experience', () => {
       return () => undefined;
     });
     await renderApp();
-    expect(
-      container.querySelector<HTMLInputElement>('input[aria-label="Roon Server host"]')?.value
-    ).toBe('192.168.50.2');
+    expect(container.querySelector<HTMLInputElement>('#rrp-host')?.value).toBe('192.168.50.2');
 
     await act(async () => publish?.(snapshot(true)));
-    expect(container.querySelector('input[aria-label="Roon Server host"]')).toBeFalsy();
+    expect(container.querySelector('#rrp-host')).toBeFalsy();
   });
 
   it('does not overwrite active manual edits when an authoritative snapshot changes', async () => {
@@ -233,12 +292,12 @@ describe('renderer experience', () => {
       return () => undefined;
     });
     await renderApp();
-    const host = container.querySelector<HTMLInputElement>('input[aria-label="Roon Server host"]')!;
+    const host = container.querySelector<HTMLInputElement>('#rrp-host')!;
     await input(host, 'edited.local');
 
     await act(async () => publish?.(snapshot(true)));
     expect(host.value).toBe('edited.local');
-    expect(container.querySelector('input[aria-label="Roon Server host"]')).toBe(host);
+    expect(container.querySelector('#rrp-host')).toBe(host);
   });
 
   it('renders playback and persists preference toggles', async () => {
@@ -271,8 +330,11 @@ describe('renderer experience', () => {
 
     expect(container.textContent).toContain('Mapped by the core');
     expect(container.textContent).toContain('The exact Discord state');
-    expect(container.textContent).toContain('Waiting for Discord');
-    expect(container.textContent).not.toContain('Published');
+    // The "Published to Discord" section label is always present — only the
+    // delivery tag itself should ever read "Published".
+    expect(container.querySelector('.now-playing-header .tag')?.textContent).toBe(
+      'Waiting for Discord'
+    );
   });
 
   it('rolls back an optimistic setting when persistence fails', async () => {
@@ -281,12 +343,12 @@ describe('renderer experience', () => {
     await renderApp();
 
     const albumToggle = toggle(/^Album/);
-    expect(albumToggle.checked).toBe(true);
+    expect(albumToggle.getAttribute('aria-checked')).toBe('true');
 
     await click(albumToggle);
     await act(async () => Promise.resolve());
 
-    expect(albumToggle.checked).toBe(true);
+    expect(albumToggle.getAttribute('aria-checked')).toBe('true');
     expect(container.textContent).toContain('previous choice was restored');
   });
 
@@ -315,8 +377,8 @@ describe('renderer experience', () => {
     });
     await act(async () => first.promise);
 
-    expect(album.checked).toBe(false);
-    expect(zone.checked).toBe(false);
+    expect(album.getAttribute('aria-checked')).toBe('false');
+    expect(zone.getAttribute('aria-checked')).toBe('false');
   });
 
   it('ignores an older settings rejection after a newer update succeeds', async () => {
@@ -340,8 +402,8 @@ describe('renderer experience', () => {
     first.reject(new Error('older write failed'));
     await act(async () => first.promise.catch(() => undefined));
 
-    expect(album.checked).toBe(false);
-    expect(zone.checked).toBe(false);
+    expect(album.getAttribute('aria-checked')).toBe('false');
+    expect(zone.getAttribute('aria-checked')).toBe('false');
     expect(container.textContent).not.toContain('previous choice was restored');
   });
 
@@ -350,7 +412,7 @@ describe('renderer experience', () => {
     completeOnboarding.mockRejectedValueOnce(new Error('write failed'));
     await renderApp();
 
-    await click(button(/open dashboard/i));
+    await click(button(/open the dashboard/i));
     await act(async () => Promise.resolve());
 
     expect(container.textContent).toContain('Set up Roon Presence');
@@ -361,10 +423,10 @@ describe('renderer experience', () => {
   it('persists a selected playback zone', async () => {
     const { updateSettings } = installApi(true);
     await renderApp();
-    const automaticZone = button(/follow the active zone/i);
-    expect(automaticZone.getAttribute('role')).toBe('radio');
-    expect(automaticZone.getAttribute('aria-checked')).toBe('false');
-    await click(automaticZone);
+    const automaticZone = radioInput(/follow the active zone/i);
+    expect(automaticZone.type).toBe('radio');
+    expect(automaticZone.checked).toBe(false);
+    await click(radioLabel(/follow the active zone/i));
     expect(updateSettings).toHaveBeenCalledWith({ zoneMode: 'automatic' });
   });
 
@@ -378,5 +440,26 @@ describe('renderer experience', () => {
 
     await click(button(/confirm forget roon/i));
     expect(forgetRoon).toHaveBeenCalledOnce();
+  });
+
+  it('returns to setup from "Run setup again"', async () => {
+    const { updateSettings } = installApi(true);
+    await renderApp();
+    expect(container.textContent).toContain('Now playing');
+
+    await click(button(/run setup again/i));
+    await act(async () => Promise.resolve());
+    expect(updateSettings).toHaveBeenCalledWith({ onboardingComplete: false });
+    expect(container.textContent).toContain('Set up Roon Presence');
+  });
+
+  it('toggles the theme and applies it to the document root', async () => {
+    const { updateSettings } = installApi(true);
+    await renderApp();
+    expect(document.documentElement.dataset.theme).toBe('light');
+
+    await click(button(/switch to dark theme/i));
+    expect(updateSettings).toHaveBeenCalledWith({ theme: 'dark' });
+    expect(document.documentElement.dataset.theme).toBe('dark');
   });
 });

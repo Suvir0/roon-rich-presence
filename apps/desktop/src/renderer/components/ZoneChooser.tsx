@@ -13,42 +13,38 @@ export function ZoneChooser({
   update: (patch: AppSettingsPatch) => void;
 }) {
   return (
-    <div className="zone-chooser" role="radiogroup" aria-label="Playback zone">
-      <button
-        role="radio"
-        aria-checked={snapshot.settings.zoneMode === 'automatic'}
-        className={snapshot.settings.zoneMode === 'automatic' ? 'selected' : ''}
-        onClick={() => update({ zoneMode: 'automatic' })}
-      >
-        <span>
+    <div className="zone-list" role="radiogroup" aria-label="Playback zone">
+      <label className="radio">
+        <input
+          type="radio"
+          name="rrp-zone"
+          checked={snapshot.settings.zoneMode === 'automatic'}
+          onChange={() => update({ zoneMode: 'automatic' })}
+        />
+        <span className="dot" aria-hidden="true" />
+        <span className="radio-copy">
           <strong>Automatic</strong>
           <small>Follow the active zone</small>
         </span>
-        <i aria-hidden="true" />
-      </button>
-      {snapshot.zones.map((zone) => (
-        <button
-          key={zone.id}
-          role="radio"
-          aria-checked={
-            snapshot.settings.zoneMode === 'selected' &&
-            snapshot.settings.selectedZoneId === zone.id
-          }
-          className={
-            snapshot.settings.zoneMode === 'selected' &&
-            snapshot.settings.selectedZoneId === zone.id
-              ? 'selected'
-              : ''
-          }
-          onClick={() => update({ zoneMode: 'selected', selectedZoneId: zone.id })}
-        >
-          <span>
-            <strong>{zone.name}</strong>
-            <small>{zone.state ? capitalize(zone.state) : 'Available'}</small>
-          </span>
-          <i aria-hidden="true" />
-        </button>
-      ))}
+      </label>
+      {snapshot.zones.map((zone) => {
+        const checked = snapshot.settings.zoneMode === 'selected' && snapshot.settings.selectedZoneId === zone.id;
+        return (
+          <label className="radio" key={zone.id}>
+            <input
+              type="radio"
+              name="rrp-zone"
+              checked={checked}
+              onChange={() => update({ zoneMode: 'selected', selectedZoneId: zone.id })}
+            />
+            <span className="dot" aria-hidden="true" />
+            <span className="radio-copy">
+              <strong>{zone.name}</strong>
+              <small>{zone.state ? capitalize(zone.state) : 'Available'}</small>
+            </span>
+          </label>
+        );
+      })}
       {!snapshot.zones.length && (
         <p className="empty-inline">
           Zones appear here once Roon is connected. Automatic mode is available now.

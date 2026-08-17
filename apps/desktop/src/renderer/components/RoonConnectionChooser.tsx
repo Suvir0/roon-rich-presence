@@ -55,81 +55,76 @@ export function RoonConnectionChooser({
   const recovery = snapshot.roon.reason ? RECOVERY_COPY[snapshot.roon.reason] : undefined;
 
   return (
-    <div className="connection-method">
+    <div>
       {recovery && (
-        <div className="connection-recovery" role="alert">
-          <span>
+        <div className="recovery-banner" role="alert">
+          <span className="recovery-copy">
             <strong>{recovery.title}</strong>
             <small>{recovery.body}</small>
           </span>
           {snapshot.roon.reason === 'local-network-blocked' && (
             <button
-              className="button ghost"
+              className="btn btn-secondary"
               onClick={() => void window.rrp?.openLocalNetworkSettings()}
             >
-              Open Local Network Settings
+              Open settings
             </button>
           )}
         </div>
       )}
-      <span className="field-label">Connection method</span>
-      <div className="segmented" role="group" aria-label="Roon connection method">
-        <button
-          className={!manual ? 'selected' : ''}
-          aria-pressed={!manual}
-          onClick={selectAutomatic}
-        >
-          Automatic discovery
-        </button>
-        <button
-          className={manual ? 'selected' : ''}
-          aria-pressed={manual}
-          onClick={() => setManual(true)}
-        >
-          Manual address
-        </button>
-      </div>
-      {!manual ? (
-        <p>Recommended. Finds the server and its current API port automatically.</p>
-      ) : (
-        <div className="manual-fields">
-          <label>
-            Server host
-            <input
-              aria-label="Roon Server host"
-              placeholder="192.168.1.20"
-              value={host}
-              onChange={(event) => {
-                editing.current = true;
-                setHost(event.target.value);
-              }}
-            />
+      <div className="connection-row">
+        <div className="seg" role="group" aria-label="Roon connection method">
+          <label className="seg-opt">
+            <input type="radio" name="rrp-conn" checked={!manual} onChange={selectAutomatic} />
+            Automatic discovery
           </label>
-          <details className="advanced-port" open={Boolean(port)}>
-            <summary>Advanced: specify API port</summary>
-            <label>
-              API port (optional)
+          <label className="seg-opt">
+            <input type="radio" name="rrp-conn" checked={manual} onChange={() => setManual(true)} />
+            Manual address
+          </label>
+        </div>
+        <p>
+          {manual
+            ? 'Use this when automatic discovery is blocked by your network.'
+            : 'Recommended. Finds the server and its current API port automatically.'}
+        </p>
+      </div>
+      {manual && (
+        <>
+          <div className="manual-row">
+            <div className="field">
+              <label htmlFor="rrp-host">Server host</label>
               <input
-                aria-label="Roon Server port"
+                id="rrp-host"
+                className="input"
+                placeholder="192.168.1.20"
+                value={host}
+                onChange={(event) => {
+                  editing.current = true;
+                  setHost(event.target.value);
+                }}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="rrp-port">API port — optional</label>
+              <input
+                id="rrp-port"
+                className="input"
                 inputMode="numeric"
-                placeholder="Discover automatically"
+                placeholder="Auto"
                 value={port}
                 onChange={(event) => {
                   editing.current = true;
                   setPort(event.target.value);
                 }}
               />
-            </label>
-            <small>Leave this empty unless Roon shows you a specific API port.</small>
-          </details>
-          {formError && <p className="field-error">{formError}</p>}
-          <div className="manual-actions">
-            <p>Use this when automatic discovery is blocked by your network.</p>
-            <button className="button primary" onClick={saveManual}>
+            </div>
+            <button className="btn btn-primary" onClick={saveManual}>
               Save and connect
             </button>
           </div>
-        </div>
+          {formError && <p className="field-error">{formError}</p>}
+        </>
       )}
     </div>
   );

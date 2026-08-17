@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AppSettingsPatch } from '../shared/contracts';
+import { Dashboard } from './components/Dashboard';
+import { Header } from './components/Header';
 import { Icon } from './components/Icon';
-import { PlaybackCard } from './components/PlaybackCard';
-import { Preferences } from './components/Preferences';
 import { Setup } from './components/Setup';
-import { StatusRow } from './components/StatusRow';
 import { useToast } from './hooks/useToast';
-import { STATUS_DOT, STATUS_LABEL } from './labels';
 import { EMPTY_SNAPSHOT, toUiSnapshot, type UiSnapshot } from './snapshot';
 
 export default function App() {
@@ -42,6 +40,10 @@ export default function App() {
       unsubscribe?.();
     };
   }, [api]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = snapshot.settings.theme;
+  }, [snapshot.settings.theme]);
 
   const update = (patch: AppSettingsPatch) => {
     const sequence = ++updateSequence.current;
@@ -106,78 +108,55 @@ export default function App() {
     }
   };
 
-  const healthy = snapshot.roon.status === 'connected' && snapshot.discord.status === 'connected';
-
   if (!loaded) {
     return (
-      <main className="loading">
-        <div className="logo">
-          <Icon name="wave" />
-          <strong>Roon Presence</strong>
-        </div>
-        <div className="loader" />
-        <span>Starting securely…</span>
-      </main>
-    );
-  }
-
-  if (!snapshot.onboardingComplete) {
-    return (
-      <>
-        <Setup snapshot={snapshot} onDone={complete} update={update} />
-        {toast && (
-          <div className="toast" role="status">
-            {toast}
+      <div className="app-frame">
+        <main className="loading">
+          <div className="brand">
+            <Icon name="wave" />
+            <strong>Roon Presence</strong>
           </div>
-        )}
-      </>
+          <div className="loader" />
+          <span>Starting securely…</span>
+        </main>
+      </div>
     );
   }
 
   return (
-    <div className="app-shell">
-      <header className="topbar">
-        <div className="logo">
-          <Icon name="wave" />
-          <strong>Roon Presence</strong>
-        </div>
-        <button
-          className={`power ${snapshot.settings.presenceEnabled ? 'on' : ''}`}
-          aria-label={snapshot.settings.presenceEnabled ? 'Disable presence' : 'Enable presence'}
-          onClick={() => update({ presenceEnabled: !snapshot.settings.presenceEnabled })}
-        >
-          <span>●</span>
-          {snapshot.settings.presenceEnabled ? 'Presence on' : 'Presence off'}
-        </button>
-      </header>
-
-      <div className={`health ${healthy ? 'good' : ''}`}>
-        <StatusRow
-          label="Roon"
-          dotClass={STATUS_DOT[snapshot.roon.status]}
-          statusLabel={STATUS_LABEL[snapshot.roon.status]}
-        />
-        <StatusRow
-          label="Discord"
-          dotClass={STATUS_DOT[snapshot.discord.status]}
-          statusLabel={STATUS_LABEL[snapshot.discord.status]}
-        />
-      </div>
-
-      <main className="content">
-        <PlaybackCard snapshot={snapshot} />
-        <Preferences
+    <div className="app-frame">
+      <div className="app-card">
+        <Header
           snapshot={snapshot}
-          update={update}
-          onForget={forgetRoon}
-          onCopy={() => action(api?.copyDiagnostics?.bind(api), 'Redacted diagnostics copied')}
-          onExternal={(url) => action(() => api?.openExternal(url), 'Opened in your browser')}
+          onTogglePresence={() => update({ presenceEnabled: !snapshot.settings.presenceEnabled })}
+          onToggleTheme={() => update({ theme: snapshot.settings.theme === 'dark' ? 'light' : 'dark' })}
         />
-      </main>
 
-      {snapshot.version && (
-        <footer className="version">Local-first · No telemetry · v{snapshot.version}</footer>
-      )}
+        {!snapshot.onboardingComplete ? (
+          <Setup snapshot={snapshot} onDone={complete} update={update} />
+        ) : (
+          <Dashboard
+            snapshot={snapshot}
+            update={update}
+            onForget={forgetRoon}
+            onCopy={() => action(api?.copyDiagnostics?.bind(api), 'Redacted diagnostics copied')}
+            onExternal={(url) => action(() => api?.openExternal(url), 'Opened in your browser')}
+            onBackToSetup={() => update({ onboardingComplete: false })}
+          />
+        )}
+
+        <footer className="app-footer">
+          <span>Local-first</span>
+          <span className="dot-sep">·</span>
+          <span>No telemetry</span>
+          {snapshot.version && (
+            <>
+              <span className="dot-sep">·</span>
+              <span className="version">v{snapshot.version}</span>
+            </>
+          )}
+        </footer>
+      </div>
 
       {toast && (
         <div className="toast" role="status">

@@ -12,20 +12,21 @@ export function Toggle({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className={`toggle-row ${disabled ? 'disabled' : ''}`}>
-      <span>
+    <button
+      type="button"
+      className="toggle-row"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+    >
+      <span className="toggle-copy">
         <strong>{label}</strong>
         {description && <small>{description}</small>}
       </span>
-      <input
-        type="checkbox"
-        checked={checked}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.checked)}
-      />
-      <span className="toggle" aria-hidden="true">
-        <span />
+      <span className="switch" aria-hidden="true">
+        <span className="switch-knob" />
       </span>
-    </label>
+    </button>
   );
 }
