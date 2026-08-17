@@ -2,6 +2,14 @@
 
 This project follows semantic versioning. Dates use the ISO 8601 format.
 
+## 0.2.0 - 2026-08-17
+
+- Replaced the entire interface with a new "Classical" design: a light cream/gold serif layout with a document-style card, roman-numeral onboarding, and a two-column now-playing/settings dashboard
+- Added a light/dark theme toggle, persisted per user
+- Vendored the interface's Cormorant Garamond and Lora fonts locally instead of loading them from Google Fonts, so the app never phones out on launch
+- Reduced installed app size (~530 MB to ~306 MB per architecture) and packaged asar size (17 MB to ~5.2 MB) by dropping the `zod` dependency for a hand-rolled settings validator, moving `react`/`react-dom` to build-time-only dependencies, and excluding the `@rrp/core` workspace package's source and test files from the packaged app
+- Reduced download size by splitting macOS packaging into separate arm64 and x64 builds instead of one universal binary
+
 ## 0.1.3 - 2026-08-16
 
 - Fixed album artwork matching when Roon appends common edition labels such as **Explicit**, **Clean**, **Deluxe Edition**, or remaster annotations
