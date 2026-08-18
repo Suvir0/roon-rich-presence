@@ -45,7 +45,10 @@ export function normalizeMetadata(value: string): string {
 
 const EDITION_LABEL =
   'explicit(?:\\s+version)?|clean(?:\\s+version)?|(?:super\\s+)?deluxe(?:\\s+edition)?|expanded(?:\\s+edition)?|special\\s+edition|digital\\s+edition|bonus\\s+tracks?(?:\\s+(?:version|edition))?|(?:(?:\\d{4}|\\d+(?:st|nd|rd|th))\\s+)?anniversary(?:\\s+edition)?|(?:\\d{4}\\s+)?remaster(?:ed)?(?:\\s+\\d{4})?';
-const BRACKETED_ARTWORK_EDITION = new RegExp(`\\s*[([]\\s*(?:${EDITION_LABEL})\\s*[)\\]]\\s*$`, 'i');
+const BRACKETED_ARTWORK_EDITION = new RegExp(
+  `\\s*[([]\\s*(?:${EDITION_LABEL})\\s*[)\\]]\\s*$`,
+  'i'
+);
 const SEPARATED_ARTWORK_EDITION = new RegExp(`\\s*[-–—:]\\s*(?:${EDITION_LABEL})\\s*$`, 'i');
 const UNSEPARATED_ARTWORK_EDITION = new RegExp(
   `\\s+(?:explicit(?:\\s+version)?|clean(?:\\s+version)?|(?:super\\s+)?deluxe\\s+edition|expanded\\s+edition|special\\s+edition|digital\\s+edition|bonus\\s+tracks?(?:\\s+(?:version|edition))|(?:(?:\\d{4}|\\d+(?:st|nd|rd|th))\\s+)?anniversary\\s+edition|(?:\\d{4}\\s+)?remaster(?:ed)?(?:\\s+\\d{4})?)\\s*$`,
@@ -65,7 +68,11 @@ const TRAILING_BRACKET_GROUP = /\s*[([]([^()[\]]*)[)\]]\s*$/;
 function stripTrailingEditionBracketRun(value: string): string {
   const peeled: string[] = [];
   let working = value;
-  for (let match = TRAILING_BRACKET_GROUP.exec(working); match; match = TRAILING_BRACKET_GROUP.exec(working)) {
+  for (
+    let match = TRAILING_BRACKET_GROUP.exec(working);
+    match;
+    match = TRAILING_BRACKET_GROUP.exec(working)
+  ) {
     peeled.push(match[1]?.trim() ?? '');
     working = working.slice(0, match.index).trim();
   }

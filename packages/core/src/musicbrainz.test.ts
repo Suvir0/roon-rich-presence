@@ -38,9 +38,7 @@ describe('MusicBrainz matching', () => {
   });
 
   it('strips a trailing edition marker followed by a separate release subtitle', () => {
-    expect(albumForArtwork('Eternal Atake (Deluxe) [LUV vs. The World 2]')).toBe(
-      'Eternal Atake'
-    );
+    expect(albumForArtwork('Eternal Atake (Deluxe) [LUV vs. The World 2]')).toBe('Eternal Atake');
     expect(albumForArtwork('Album (Explicit) [Bonus Track Version]')).toBe('Album');
   });
 
