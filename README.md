@@ -27,7 +27,7 @@ Private-beta downloads are attached to the [GitHub Releases page](https://github
 
 ### macOS beta
 
-1. Download the universal `Roon Rich Presence-Beta-*.dmg` from the latest release.
+1. Download `Roon Rich Presence-Beta-*-arm64.dmg` (Apple Silicon) or `-x64.dmg` (Intel) from the latest release.
 2. Open the disk image and drag Roon Rich Presence into Applications.
 3. In Applications, Control-click Roon Rich Presence and choose **Open**.
 4. Confirm **Open** when macOS warns that the developer cannot be verified. If macOS blocks it, open **System Settings > Privacy & Security** and use **Open Anyway** for Roon Rich Presence.

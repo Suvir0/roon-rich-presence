@@ -8,6 +8,12 @@ directories:
 files:
   - out/**/*
   - package.json
+  # Workspace packages are symlinked, not installed from a registry tarball, so npm's
+  # own "files" allowlist is never applied to them; exclude source and project files here.
+  - '!node_modules/@rrp/core/src/**'
+  - '!node_modules/@rrp/core/tsconfig*.json'
+  - '!node_modules/@rrp/core/*.map'
+  - '!node_modules/@rrp/core/dist/**/*.map'
 extraResources:
   - from: ../../LICENSE
     to: LICENSE.txt
@@ -52,10 +58,12 @@ mac:
   target:
     - target: dmg
       arch:
-        - universal
+        - arm64
+        - x64
     - target: zip
       arch:
-        - universal
+        - arm64
+        - x64
   artifactName: '${productName}-Beta-${version}-${arch}.${ext}'
 win:
   icon: resources/icon.ico

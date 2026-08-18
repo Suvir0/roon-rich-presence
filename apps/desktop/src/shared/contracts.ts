@@ -31,8 +31,11 @@ export interface ZoneSummary {
   state: PlaybackStatus;
 }
 
+export type ThemeMode = 'light' | 'dark';
+
 export interface AppSettings {
   schemaVersion: 2;
+  theme: ThemeMode;
   presenceEnabled: boolean;
   zoneMode: 'selected' | 'automatic';
   selectedZoneId?: string;
@@ -81,7 +84,6 @@ export interface AppSnapshot {
   discord: { status: ConnectionStatus; message: string };
   artwork: { status: ConnectionStatus; message: string; url?: string };
   securityWarning?: string;
-  diagnostics: string[];
 }
 
 export interface RrpApi {

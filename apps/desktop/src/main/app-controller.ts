@@ -217,8 +217,7 @@ export class AppController {
       },
       discord: { ...this.discordSnapshot },
       artwork: { ...this.artworkState },
-      ...(securityWarning ? { securityWarning } : {}),
-      diagnostics: [...this.diagnostics]
+      ...(securityWarning ? { securityWarning } : {})
     };
   }
 
@@ -475,12 +474,13 @@ export class AppController {
     };
   }
 
+  /** Diagnostics are not part of the snapshot; log lines reach the UI only through the
+   * connection-state changes that already trigger emit() alongside most log() calls. */
   private log(message: string): void {
     const safe = redactDiagnostic(message);
     this.diagnostics.push(`${new Date().toISOString()} ${safe}`);
     if (this.diagnostics.length > MAX_DIAGNOSTICS) this.diagnostics.shift();
     this.diagnosticLog.append(`${new Date().toISOString()} ${safe}\n`);
-    this.emit();
   }
 
   private emit(): void {

@@ -16,9 +16,9 @@ import {
 import electronUpdater from 'electron-updater';
 import { readFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
-import { z } from 'zod';
-import { IPC_CHANNELS, type AppSettingsPatch, type AppSnapshot } from '../shared/contracts';
+import { IPC_CHANNELS, type AppSnapshot } from '../shared/contracts';
 import { AppController } from './app-controller';
+import { parseSettingsPatch } from './defaults';
 import { beginVisibleNetworkAccess, requestLocalNetworkAccess } from './local-network';
 import { rendererUrlIsTrusted, resolveRendererAssetPath } from './security';
 
@@ -56,31 +56,19 @@ const CSP = [
   "form-action 'none'"
 ].join('; ');
 
-const settingsPatchSchema = z
-  .object({
-    presenceEnabled: z.boolean().optional(),
-    zoneMode: z.enum(['selected', 'automatic']).optional(),
-    selectedZoneId: z.string().min(1).max(256).optional(),
-    showAlbum: z.boolean().optional(),
-    showProgress: z.boolean().optional(),
-    showZone: z.boolean().optional(),
-    showWhenPaused: z.boolean().optional(),
-    artworkLookupEnabled: z.boolean().optional(),
-    startAtLogin: z.boolean().optional(),
-    launchHidden: z.boolean().optional(),
-    automaticUpdates: z.boolean().optional(),
-    onboardingComplete: z.boolean().optional(),
-    manualRoonHost: z.string().trim().max(253).optional(),
-    manualRoonPort: z.number().int().min(1).max(65535).nullable().optional()
-  })
-  .strict();
-
 let window: BrowserWindow | undefined;
 let tray: Tray | undefined;
 let controller: AppController | undefined;
 let isQuitting = false;
 let lastTrayMenuKey = '';
 let localNetworkAccessRequest: Promise<void> | undefined;
+
+// Mirrors the --color-bg token for each theme in styles.css, so the window
+// never flashes the wrong background color while the renderer loads.
+const BACKGROUND_BY_THEME: Record<'light' | 'dark', string> = {
+  light: '#f3f2f2',
+  dark: '#1c1a17'
+};
 
 function requestLocalNetworkAccessOnce(): Promise<void> {
   localNetworkAccessRequest ??= requestLocalNetworkAccess();
@@ -198,13 +186,14 @@ function showWindow(): void {
 }
 
 function createWindow(): BrowserWindow {
+  const theme = controller?.getSnapshot().settings.theme ?? 'light';
   const created = new BrowserWindow({
-    width: 1160,
-    height: 780,
+    width: 1040,
+    height: 880,
     minWidth: 900,
-    minHeight: 640,
+    minHeight: 720,
     show: false,
-    backgroundColor: '#0a0b10',
+    backgroundColor: BACKGROUND_BY_THEME[theme],
     title: 'Roon Rich Presence',
     titleBarStyle: 'default',
     webPreferences: {
@@ -247,6 +236,15 @@ function createWindow(): BrowserWindow {
   return created;
 }
 
+const RENDERER_MIME_TYPES: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.woff2': 'font/woff2',
+  '.png': 'image/png'
+};
+
 function registerProtocol(): void {
   protocol.handle('rrp', async (request) => {
     const root = join(import.meta.dirname, '../renderer');
@@ -254,16 +252,7 @@ function registerProtocol(): void {
     if (!requested) return new Response('Not found', { status: 404 });
     try {
       const contents = await readFile(requested);
-      const type =
-        extname(requested) === '.html'
-          ? 'text/html; charset=utf-8'
-          : extname(requested) === '.js'
-            ? 'text/javascript; charset=utf-8'
-            : extname(requested) === '.css'
-              ? 'text/css; charset=utf-8'
-              : extname(requested) === '.svg'
-                ? 'image/svg+xml'
-                : 'application/octet-stream';
+      const type = RENDERER_MIME_TYPES[extname(requested)] ?? 'application/octet-stream';
       return new Response(contents, {
         headers: {
           'Content-Type': type,
@@ -288,7 +277,7 @@ function registerIpc(): void {
   });
   ipcMain.handle(IPC_CHANNELS.updateSettings, (event, input: unknown) => {
     assertTrustedSender(event);
-    const patch = settingsPatchSchema.parse(input) as AppSettingsPatch;
+    const patch = parseSettingsPatch(input);
     return controller?.updateSettings(patch);
   });
   ipcMain.handle(IPC_CHANNELS.completeOnboarding, (event) => {
@@ -350,7 +339,10 @@ async function start(): Promise<void> {
   registerIpc();
   controller.subscribe((snapshot) => {
     rebuildTray(snapshot);
-    if (window && !window.isDestroyed()) window.webContents.send(IPC_CHANNELS.snapshot, snapshot);
+    if (window && !window.isDestroyed()) {
+      window.webContents.send(IPC_CHANNELS.snapshot, snapshot);
+      window.setBackgroundColor(BACKGROUND_BY_THEME[snapshot.settings.theme]);
+    }
   });
   tray = new Tray(createTrayIcon());
   if (process.platform === 'darwin') tray.setIgnoreDoubleClickEvents(true);

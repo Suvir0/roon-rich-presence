@@ -1,6 +1,6 @@
 # Releasing
 
-macOS universal, Windows x64, and Linux x64 (`AppImage` and `.deb`) are beta channels. The macOS beta is ad-hoc signed so it can run, but it is not Developer ID signed or notarized. Flatpak and Snap are not produced because their sandboxes can hide Discord IPC. Linux support also depends on the Social SDK's current experimental platform support.
+macOS arm64/x64, Windows x64, and Linux x64 (`AppImage` and `.deb`) are beta channels. The macOS beta is ad-hoc signed so it can run, but it is not Developer ID signed or notarized. Flatpak and Snap are not produced because their sandboxes can hide Discord IPC. Linux support also depends on the Social SDK's current experimental platform support.
 
 The macOS beta includes a best-effort Local Network permission prompt before Roon discovery begins. Because the app is ad-hoc signed, it does not have the stable Apple-issued signing identity that macOS recommends for reliable Local Network privacy tracking across builds. If discovery stops after an update, turn **Roon Rich Presence** on in **System Settings > Privacy & Security > Local Network**, quit the app completely, and reopen it. Do not recommend `tccutil`: macOS does not provide a supported command that resets Local Network privacy to its undetermined state. Use a new macOS user account or a VM restored to a pre-install snapshot to retest the first-launch prompt.
 
