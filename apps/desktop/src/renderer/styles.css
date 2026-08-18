@@ -113,7 +113,8 @@
 
   --shadow-sm: 0 0 0 1px var(--color-divider);
   --shadow-md: 0 0 0 1px var(--color-divider), 0 6px 20px color-mix(in srgb, #000 45%, transparent);
-  --shadow-lg: 0 0 0 1px var(--color-divider), 0 16px 40px color-mix(in srgb, #000 55%, transparent);
+  --shadow-lg:
+    0 0 0 1px var(--color-divider), 0 16px 40px color-mix(in srgb, #000 55%, transparent);
 }
 
 *,

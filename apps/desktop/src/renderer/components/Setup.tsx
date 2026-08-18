@@ -23,9 +23,9 @@ export function Setup({
       <span className="setup-kicker">First movement</span>
       <h1>Set up Roon Presence</h1>
       <p className="setup-intro">
-        Roon Presence runs entirely on this computer. It listens to your Roon Server over the
-        local network and hands a single line of text to the Discord client already running
-        beside it. No account, no server of ours, no listening history kept anywhere.
+        Roon Presence runs entirely on this computer. It listens to your Roon Server over the local
+        network and hands a single line of text to the Discord client already running beside it. No
+        account, no server of ours, no listening history kept anywhere.
       </p>
       <div className="hr" />
 
@@ -59,8 +59,8 @@ export function Setup({
           </h2>
           <p>
             Turn this on and the current artist and album text are sent to MusicBrainz to find a
-            public cover. Nothing else leaves this computer, and Discord only receives the
-            resulting Cover Art Archive link.
+            public cover. Nothing else leaves this computer, and Discord only receives the resulting
+            Cover Art Archive link.
           </p>
           <Toggle
             label="Use MusicBrainz artwork matching"

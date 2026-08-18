@@ -28,7 +28,8 @@ export function ZoneChooser({
         </span>
       </label>
       {snapshot.zones.map((zone) => {
-        const checked = snapshot.settings.zoneMode === 'selected' && snapshot.settings.selectedZoneId === zone.id;
+        const checked =
+          snapshot.settings.zoneMode === 'selected' && snapshot.settings.selectedZoneId === zone.id;
         return (
           <label className="radio" key={zone.id}>
             <input

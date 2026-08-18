@@ -82,7 +82,9 @@ const PATCH_BOOLEAN_KEYS = [
 type PatchValidator = (value: unknown) => boolean;
 
 const PATCH_VALIDATORS: Record<string, PatchValidator> = {
-  ...Object.fromEntries(PATCH_BOOLEAN_KEYS.map((key) => [key, (value) => typeof value === 'boolean'])),
+  ...Object.fromEntries(
+    PATCH_BOOLEAN_KEYS.map((key) => [key, (value) => typeof value === 'boolean'])
+  ),
   theme: (value) => value === 'light' || value === 'dark',
   zoneMode: (value) => value === 'selected' || value === 'automatic',
   selectedZoneId: (value) => typeof value === 'string' && value.length >= 1 && value.length <= 256,

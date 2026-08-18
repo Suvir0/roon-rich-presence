@@ -79,10 +79,14 @@ describe('parseSettingsPatch', () => {
   });
 
   it('rejects an invalid theme value', () => {
-    expect(() => parseSettingsPatch({ theme: 'blue' })).toThrow('Invalid value for settings key: theme');
+    expect(() => parseSettingsPatch({ theme: 'blue' })).toThrow(
+      'Invalid value for settings key: theme'
+    );
   });
 
   it('rejects an unknown key', () => {
-    expect(() => parseSettingsPatch({ notARealKey: true })).toThrow('Unknown settings key: notARealKey');
+    expect(() => parseSettingsPatch({ notARealKey: true })).toThrow(
+      'Unknown settings key: notARealKey'
+    );
   });
 });

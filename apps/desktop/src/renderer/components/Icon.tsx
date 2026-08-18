@@ -1,15 +1,7 @@
 import type { ReactNode } from 'react';
 
 export type IconName =
-  | 'wave'
-  | 'home'
-  | 'settings'
-  | 'shield'
-  | 'copy'
-  | 'external'
-  | 'chevron'
-  | 'sun'
-  | 'moon';
+  'wave' | 'home' | 'settings' | 'shield' | 'copy' | 'external' | 'chevron' | 'sun' | 'moon';
 
 const PATHS: Record<IconName, ReactNode> = {
   wave: <path d="M3 12h3l2-7 4 14 3-11 2 4h4" />,

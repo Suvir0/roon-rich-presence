@@ -21,7 +21,11 @@ export function Header({
         {snapshot.version && <span className="brand-edition">No.&nbsp;{snapshot.version}</span>}
       </span>
       <span className="status-pair">
-        <StatusRow label="Roon" dotClass={STATUS_DOT[snapshot.roon.status]} statusLabel={STATUS_LABEL[snapshot.roon.status]} />
+        <StatusRow
+          label="Roon"
+          dotClass={STATUS_DOT[snapshot.roon.status]}
+          statusLabel={STATUS_LABEL[snapshot.roon.status]}
+        />
         <StatusRow
           label="Discord"
           dotClass={STATUS_DOT[snapshot.discord.status]}

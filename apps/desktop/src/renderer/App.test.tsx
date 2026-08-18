@@ -128,7 +128,8 @@ async function renderApp() {
 
 function button(label: RegExp) {
   const match = [...container.querySelectorAll('button')].find(
-    (item) => label.test(item.textContent ?? '') || label.test(item.getAttribute('aria-label') ?? '')
+    (item) =>
+      label.test(item.textContent ?? '') || label.test(item.getAttribute('aria-label') ?? '')
   );
   if (!match) throw new Error(`Button ${String(label)} was not found`);
   return match;

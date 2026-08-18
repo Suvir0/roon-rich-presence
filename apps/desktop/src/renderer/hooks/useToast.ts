@@ -12,9 +12,12 @@ export function useToast(): [string, (message: string) => void] {
     timer.current = setTimeout(() => setMessage(''), TOAST_DURATION_MS);
   }, []);
 
-  useEffect(() => () => {
-    if (timer.current) clearTimeout(timer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current);
+    },
+    []
+  );
 
   return [message, show];
 }

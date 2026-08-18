@@ -10,7 +10,11 @@ export function Artwork({ snapshot }: { snapshot: UiSnapshot }) {
   return (
     <div className="plate cover-frame">
       {artworkUrl && !broken ? (
-        <img src={artworkUrl} alt={`Cover art for ${title}`} onError={() => setBrokenUrl(artworkUrl)} />
+        <img
+          src={artworkUrl}
+          alt={`Cover art for ${title}`}
+          onError={() => setBrokenUrl(artworkUrl)}
+        />
       ) : (
         <div className="plate-placeholder">
           <Icon name="wave" />

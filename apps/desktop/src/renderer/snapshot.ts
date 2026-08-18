@@ -1,4 +1,9 @@
-import type { AppSnapshot, ConnectionStatus, RoonConnectionReason, ThemeMode } from '../shared/contracts';
+import type {
+  AppSnapshot,
+  ConnectionStatus,
+  RoonConnectionReason,
+  ThemeMode
+} from '../shared/contracts';
 
 export type PlaybackKind = 'playing' | 'paused' | 'loading' | 'stopped';
 
@@ -105,7 +110,11 @@ export function toUiSnapshot(snapshot: AppSnapshot): UiSnapshot {
       manualRoonHost: settings.manualRoonHost,
       manualRoonPort: settings.manualRoonPort
     },
-    roon: { status: snapshot.roon.status, message: snapshot.roon.message, reason: snapshot.roon.reason },
+    roon: {
+      status: snapshot.roon.status,
+      message: snapshot.roon.message,
+      reason: snapshot.roon.reason
+    },
     discord: { status: snapshot.discord.status, message: snapshot.discord.message },
     artwork: snapshot.artwork.status,
     zones: snapshot.zones.map((zone) => ({ id: zone.id, name: zone.name, state: zone.state })),

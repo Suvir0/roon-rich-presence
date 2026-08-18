@@ -82,7 +82,9 @@ export function Dashboard({
         <section className="section">
           <div className="section-heading">
             <h3>What friends see</h3>
-            <span className="meta">{visible.length ? visible.join(' · ') : 'Track and artist only'}</span>
+            <span className="meta">
+              {visible.length ? visible.join(' · ') : 'Track and artist only'}
+            </span>
           </div>
           <Toggle
             label="Share listening activity"

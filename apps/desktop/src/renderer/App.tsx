@@ -88,7 +88,9 @@ export default function App() {
   const complete = async () => {
     try {
       const value = await api?.completeOnboarding();
-      const next = value ? toUiSnapshot(value) : { ...snapshotRef.current, onboardingComplete: true };
+      const next = value
+        ? toUiSnapshot(value)
+        : { ...snapshotRef.current, onboardingComplete: true };
       snapshotRef.current = next;
       setSnapshot(next);
       showToast('Setup complete');
@@ -129,7 +131,9 @@ export default function App() {
         <Header
           snapshot={snapshot}
           onTogglePresence={() => update({ presenceEnabled: !snapshot.settings.presenceEnabled })}
-          onToggleTheme={() => update({ theme: snapshot.settings.theme === 'dark' ? 'light' : 'dark' })}
+          onToggleTheme={() =>
+            update({ theme: snapshot.settings.theme === 'dark' ? 'light' : 'dark' })
+          }
         />
 
         {!snapshot.onboardingComplete ? (

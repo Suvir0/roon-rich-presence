@@ -10,7 +10,9 @@ function delivery(snapshot: UiSnapshot): { label: string; kind: keyof typeof DEL
       : { label: 'Waiting for Discord', kind: 'waiting' };
   }
   if (!snapshot.presence) return { label: 'Idle', kind: 'idle' };
-  return snapshot.presence.paused ? { label: 'Paused', kind: 'paused' } : { label: 'Published', kind: 'live' };
+  return snapshot.presence.paused
+    ? { label: 'Paused', kind: 'paused' }
+    : { label: 'Published', kind: 'live' };
 }
 
 export function NowPlaying({ snapshot }: { snapshot: UiSnapshot }) {
@@ -25,14 +27,18 @@ export function NowPlaying({ snapshot }: { snapshot: UiSnapshot }) {
     <aside className="now-playing">
       <div className="now-playing-header">
         <span>Now playing</span>
-        <span className={`tag ${state.kind === 'live' ? 'tag-accent' : 'tag-neutral'}`}>{state.label}</span>
+        <span className={`tag ${state.kind === 'live' ? 'tag-accent' : 'tag-neutral'}`}>
+          {state.label}
+        </span>
       </div>
 
       <Artwork snapshot={snapshot} />
 
       <div>
         <h2 className="track-title">{playback?.track ?? 'Waiting for music'}</h2>
-        <p className="track-artist">{playback?.artist ?? 'Start playback in Roon to see it here.'}</p>
+        <p className="track-artist">
+          {playback?.artist ?? 'Start playback in Roon to see it here.'}
+        </p>
         <p className="track-album">{playback?.zoneName ?? 'No active zone'}</p>
       </div>
 
@@ -44,7 +50,9 @@ export function NowPlaying({ snapshot }: { snapshot: UiSnapshot }) {
           aria-valuemax={100}
           aria-valuenow={Math.round(progress)}
           aria-label={
-            duration > 0 ? `${Math.round(progress)} percent played` : 'Playback progress unavailable'
+            duration > 0
+              ? `${Math.round(progress)} percent played`
+              : 'Playback progress unavailable'
           }
         >
           <span style={{ width: `${progress}%` }} />
