@@ -8,7 +8,11 @@ This is an independent project. It is not affiliated with Roon Labs or Discord.
 
 ## Current status
 
-macOS, Windows, and Linux packages are currently a private beta for repository collaborators. The macOS build is ad-hoc signed so it can run, but it is not signed with an Apple Developer ID or notarized. macOS will show a security warning on first launch.
+Roon Rich Presence is a public beta.
+
+macOS builds are published on the [GitHub Releases page](https://github.com/Suvir0/roon-rich-presence/releases) for Apple Silicon and Intel. They are ad-hoc signed so they can run, but they are not signed with an Apple Developer ID or notarized, so macOS shows a security warning on first launch.
+
+Windows and Linux are supported in the source tree and can be built locally, but no installers are published yet. Their release builds require the Discord Social SDK secrets in the protected release workflow, which are not configured for this repository. Build them yourself with `npm run package:win` or `npm run package:linux`.
 
 ## What it does
 
@@ -23,7 +27,7 @@ macOS, Windows, and Linux packages are currently a private beta for repository c
 
 ## Install
 
-Private-beta downloads are attached to the [GitHub Releases page](https://github.com/Suvir0/roon-rich-presence/releases) and are available only to repository collaborators.
+Beta downloads are attached to the [GitHub Releases page](https://github.com/Suvir0/roon-rich-presence/releases). Verify what you download against the `SHA256SUMS-mac-beta.txt` file published with the same release.
 
 ### macOS beta
 
@@ -36,7 +40,7 @@ Private-beta downloads are attached to the [GitHub Releases page](https://github
 7. Find **Roon Rich Presence** and click **Enable**.
 8. Return to the app, choose a playback zone, and finish setup.
 
-Only download the beta from this repository and compare it with the published checksum. Automatic updates are disabled for unsigned beta builds, so install new versions manually from GitHub Releases.
+Only download the beta from this repository's Releases page and compare it with the published checksum. Automatic updates are disabled for unsigned beta builds, so install new versions manually from GitHub Releases.
 
 The Local Network prompt is a best-effort mitigation in this ad-hoc-signed beta. Apple recommends a stable Apple-issued signing identity for reliable Local Network privacy tracking, so macOS may not retain or re-prompt for access across unsigned builds. If Roon discovery stops after an update, open **System Settings > Privacy & Security > Local Network**, turn on **Roon Rich Presence**, quit the app completely, and reopen it. macOS does not provide a supported `tccutil` reset for Local Network access.
 
@@ -46,7 +50,7 @@ The app stays available in the menu bar after you close its window. Click the wa
 
 ### Windows beta
 
-1. Download the x64 `.exe` installer from the latest release.
+1. Build the x64 `.exe` installer locally with `npm run package:win`. Windows installers are not published on the Releases page yet.
 2. Run the installer and choose an install location.
 3. Keep the Discord desktop app running.
 4. Enable Roon Rich Presence under **Roon > Settings > Extensions**.
@@ -56,7 +60,7 @@ Windows builds should remain labeled beta until the installer is signed and the 
 
 ### Linux beta
 
-Download either the x64 `.deb` package or the `.AppImage`.
+Build either the x64 `.deb` package or the `.AppImage` locally with `npm run package:linux`. Linux packages are not published on the Releases page yet.
 
 For the AppImage:
 
