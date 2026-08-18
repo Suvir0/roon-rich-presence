@@ -56,7 +56,7 @@ describe('ArtworkService album normalization', () => {
     const cache = JSON.parse(
       readFileSync(join(mocks.directory, 'artwork-cache.json'), 'utf8')
     ) as Record<string, unknown>;
-    expect(Object.keys(cache)).toEqual(['v3:the weeknd\u0000after hours']);
+    expect(Object.keys(cache)).toEqual(['v4:the weeknd\u0000after hours']);
   });
 
   it('waits before retrying a transient MusicBrainz failure', async () => {

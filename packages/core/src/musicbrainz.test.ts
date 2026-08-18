@@ -32,17 +32,72 @@ describe('MusicBrainz matching', () => {
   it('matches a canonical release title to a Roon title with an edition label', () => {
     expect(
       selectMusicBrainzReleaseGroup('The Weeknd', 'After Hours (Explicit)', [
-        { id: 'release-group-id', artist: 'The Weeknd', title: 'After Hours', score: 100 }
+        { id: 'release-group-id', artists: ['The Weeknd'], title: 'After Hours', score: 100 }
       ])
     ).toEqual({ releaseGroupId: 'release-group-id' });
+  });
+
+  it('strips a trailing edition marker followed by a separate release subtitle', () => {
+    expect(albumForArtwork('Eternal Atake (Deluxe) [LUV vs. The World 2]')).toBe('Eternal Atake');
+    expect(albumForArtwork('Album (Explicit) [Bonus Track Version]')).toBe('Album');
+  });
+
+  it('leaves a trailing bracket run alone when none of it is a recognized edition label', () => {
+    expect(albumForArtwork('Look at Me [Live]')).toBe('Look at Me [Live]');
+    expect(albumForArtwork('Album (Remix) [Radio Edit]')).toBe('Album (Remix) [Radio Edit]');
+  });
+
+  it('matches a Roon release with a deluxe marker and an unrelated subtitle', () => {
+    expect(
+      selectMusicBrainzReleaseGroup(
+        'Lil Uzi Vert',
+        'Eternal Atake (Deluxe) [LUV vs. The World 2]',
+        [{ id: 'release-group-id', artists: ['Lil Uzi Vert'], title: 'Eternal Atake', score: 100 }]
+      )
+    ).toEqual({ releaseGroupId: 'release-group-id' });
+  });
+
+  it('matches a collaboration credited under multiple performer names', () => {
+    expect(
+      selectMusicBrainzReleaseGroup('Dave', 'Split Decision', [
+        {
+          id: 'release-group-id',
+          artists: ['Dave', 'Central Cee'],
+          title: 'Split Decision',
+          score: 100
+        }
+      ])
+    ).toEqual({ releaseGroupId: 'release-group-id' });
+    expect(
+      selectArtworkMatch('Dave', 'Split Decision', [
+        {
+          id: 'release-group-id',
+          artists: ['Dave', 'Central Cee'],
+          title: 'Split Decision',
+          score: 100,
+          hasFrontArtwork: true
+        }
+      ])
+    ).toEqual({
+      releaseGroupId: 'release-group-id',
+      artworkUrl: 'https://coverartarchive.org/release-group/release-group-id/front'
+    });
+  });
+
+  it('does not match an unrelated artist whose name partially overlaps', () => {
+    expect(
+      selectMusicBrainzReleaseGroup('Dave', 'Split Decision', [
+        { id: 'other', artists: ['Dave Matthews Band'], title: 'Split Decision', score: 100 }
+      ])
+    ).toBeUndefined();
   });
 
   it('requires an exact normalized high-confidence result with front art', () => {
     expect(
       selectArtworkMatch('Björk', 'Début', [
-        { id: 'bad-score', artist: 'Björk', title: 'Début', score: 94, hasFrontArtwork: true },
-        { id: 'no-art', artist: 'Björk', title: 'Début', score: 100, hasFrontArtwork: false },
-        { id: 'winner', artist: 'bjork', title: 'debut', score: 99, hasFrontArtwork: true }
+        { id: 'bad-score', artists: ['Björk'], title: 'Début', score: 94, hasFrontArtwork: true },
+        { id: 'no-art', artists: ['Björk'], title: 'Début', score: 100, hasFrontArtwork: false },
+        { id: 'winner', artists: ['bjork'], title: 'debut', score: 99, hasFrontArtwork: true }
       ])
     ).toEqual({
       releaseGroupId: 'winner',
@@ -53,7 +108,7 @@ describe('MusicBrainz matching', () => {
   it('accepts unknown artwork availability for later CAA verification', () => {
     expect(
       selectArtworkMatch('Artist', 'Album', [
-        { id: 'candidate', artist: 'Artist', title: 'Album', score: 100 }
+        { id: 'candidate', artists: ['Artist'], title: 'Album', score: 100 }
       ])
     ).toEqual({
       releaseGroupId: 'candidate',
@@ -69,20 +124,20 @@ describe('MusicBrainz matching', () => {
   it('rejects ambiguous equally scored editions and ignores results beyond five', () => {
     expect(
       selectArtworkMatch('A', 'B', [
-        { id: 'one', artist: 'A', title: 'B', score: 100, hasFrontArtwork: true },
-        { id: 'two', artist: 'A', title: 'B', score: 100, hasFrontArtwork: true }
+        { id: 'one', artists: ['A'], title: 'B', score: 100, hasFrontArtwork: true },
+        { id: 'two', artists: ['A'], title: 'B', score: 100, hasFrontArtwork: true }
       ])
     ).toBeUndefined();
     expect(
       selectArtworkMatch('A', 'B', [
         ...Array.from({ length: 5 }, (_, index) => ({
           id: String(index),
-          artist: 'X',
+          artists: ['X'],
           title: 'Y',
           score: 100,
           hasFrontArtwork: true
         })),
-        { id: 'six', artist: 'A', title: 'B', score: 100, hasFrontArtwork: true }
+        { id: 'six', artists: ['A'], title: 'B', score: 100, hasFrontArtwork: true }
       ])
     ).toBeUndefined();
   });
@@ -92,7 +147,7 @@ describe('MusicBrainz matching', () => {
       selectMusicBrainzReleaseGroup('Childish Gambino', 'Awaken, My Love!', [
         {
           id: 'release-group-id',
-          artist: 'Childish Gambino',
+          artists: ['Childish Gambino'],
           title: 'Awaken, My Love!',
           score: 100,
           hasFrontArtwork: false
