@@ -55,7 +55,8 @@ const UNSEPARATED_ARTWORK_EDITION = new RegExp(
   'i'
 );
 const EDITION_LABEL_ONLY = new RegExp(`^(?:${EDITION_LABEL})$`, 'i');
-const TRAILING_BRACKET_GROUP = /\s*[([]([^()[\]]*)[)\]]\s*$/;
+const TRAILING_BRACKET_GROUP = /[([]([^()[\]]*)[)\]]\s*$/;
+const WHITESPACE = /\s/;
 
 /**
  * Roon sometimes appends an edition marker *and* a separate release subtitle, e.g.
@@ -139,7 +140,14 @@ export function selectArtworkMatch(
  * Names containing an ordinary slash (for example AC/DC) remain untouched.
  */
 export function primaryArtistForArtwork(value: string): string {
-  return value.split(/\s+\/\s+/, 1)[0]?.trim() || value.trim();
+  const trimmed = value.trim();
+  for (let index = trimmed.indexOf('/'); index > 0; index = trimmed.indexOf('/', index + 1)) {
+    const before = trimmed[index - 1];
+    const after = trimmed[index + 1];
+    if (!before || !after || !WHITESPACE.test(before) || !WHITESPACE.test(after)) continue;
+    return trimmed.slice(0, index).trim() || trimmed;
+  }
+  return trimmed;
 }
 
 /** Selects exact metadata before Cover Art Archive availability is queried separately. */

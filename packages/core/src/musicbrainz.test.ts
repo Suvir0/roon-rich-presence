@@ -119,6 +119,18 @@ describe('MusicBrainz matching', () => {
   it('uses the primary Roon credit for artwork searches without breaking slash names', () => {
     expect(primaryArtistForArtwork('Childish Gambino / Jason Martin')).toBe('Childish Gambino');
     expect(primaryArtistForArtwork('AC/DC')).toBe('AC/DC');
+    expect(primaryArtistForArtwork('Artist   /   Composer')).toBe('Artist');
+    expect(primaryArtistForArtwork('AC/DC / Brian Johnson')).toBe('AC/DC');
+    expect(primaryArtistForArtwork('  Spaced Artist  ')).toBe('Spaced Artist');
+    expect(primaryArtistForArtwork('/ Leading Slash')).toBe('/ Leading Slash');
+  });
+
+  it('normalizes metadata in linear time on adversarial whitespace', () => {
+    const padded = `Album ${' '.repeat(40_000)}`;
+    const started = performance.now();
+    expect(albumForArtwork(`${padded}(Deluxe)`)).toBe('Album');
+    expect(primaryArtistForArtwork(padded)).toBe('Album');
+    expect(performance.now() - started).toBeLessThan(1_000);
   });
 
   it('rejects ambiguous equally scored editions and ignores results beyond five', () => {
