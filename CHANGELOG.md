@@ -2,6 +2,11 @@
 
 This project follows semantic versioning. Dates use the ISO 8601 format.
 
+## Unreleased
+
+- Removed polynomial backtracking from the two artwork metadata regexes that normalize Roon-supplied artist and album strings (CodeQL `js/polynomial-redos`). Behavior is unchanged
+- Made the repository public and documented that only macOS installers are published; Windows and Linux must be built from source until the release workflow has Discord Social SDK credentials
+
 ## 0.2.0 - 2026-08-17
 
 - Replaced the entire interface with a new "Classical" design: a light cream/gold serif layout with a document-style card, roman-numeral onboarding, and a two-column now-playing/settings dashboard
