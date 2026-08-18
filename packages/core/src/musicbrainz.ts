@@ -5,7 +5,13 @@ export const MAX_ARTWORK_CACHE_ENTRIES = 2_000;
 export interface MusicBrainzCandidate {
   id: string;
   title: string;
-  artist: string;
+  /**
+   * Individual credited performer names, unjoined. A collaboration release-group credits
+   * every performer separately (e.g. ["Dave", "Central Cee"]); matching against each name
+   * lets a query for just the primary credit ("Dave") still find it, without falling back
+   * to a fuzzy substring search against a joined display string.
+   */
+  artists: string[];
   score: number;
   /** False means definitively unavailable. Undefined means the search API did not report it. */
   hasFrontArtwork?: boolean;
@@ -37,12 +43,35 @@ export function normalizeMetadata(value: string): string {
     .replace(/\s+/g, ' ');
 }
 
-const BRACKETED_ARTWORK_EDITION =
-  /\s*[([]\s*(?:explicit(?:\s+version)?|clean(?:\s+version)?|(?:super\s+)?deluxe(?:\s+edition)?|expanded(?:\s+edition)?|special\s+edition|digital\s+edition|bonus\s+tracks?(?:\s+(?:version|edition))?|(?:(?:\d{4}|\d+(?:st|nd|rd|th))\s+)?anniversary(?:\s+edition)?|(?:\d{4}\s+)?remaster(?:ed)?(?:\s+\d{4})?)\s*[)\]]\s*$/i;
-const SEPARATED_ARTWORK_EDITION =
-  /\s*[-–—:]\s*(?:explicit(?:\s+version)?|clean(?:\s+version)?|(?:super\s+)?deluxe(?:\s+edition)?|expanded(?:\s+edition)?|special\s+edition|digital\s+edition|bonus\s+tracks?(?:\s+(?:version|edition))?|(?:(?:\d{4}|\d+(?:st|nd|rd|th))\s+)?anniversary(?:\s+edition)?|(?:\d{4}\s+)?remaster(?:ed)?(?:\s+\d{4})?)\s*$/i;
-const UNSEPARATED_ARTWORK_EDITION =
-  /\s+(?:explicit(?:\s+version)?|clean(?:\s+version)?|(?:super\s+)?deluxe\s+edition|expanded\s+edition|special\s+edition|digital\s+edition|bonus\s+tracks?(?:\s+(?:version|edition))|(?:(?:\d{4}|\d+(?:st|nd|rd|th))\s+)?anniversary\s+edition|(?:\d{4}\s+)?remaster(?:ed)?(?:\s+\d{4})?)\s*$/i;
+const EDITION_LABEL =
+  'explicit(?:\\s+version)?|clean(?:\\s+version)?|(?:super\\s+)?deluxe(?:\\s+edition)?|expanded(?:\\s+edition)?|special\\s+edition|digital\\s+edition|bonus\\s+tracks?(?:\\s+(?:version|edition))?|(?:(?:\\d{4}|\\d+(?:st|nd|rd|th))\\s+)?anniversary(?:\\s+edition)?|(?:\\d{4}\\s+)?remaster(?:ed)?(?:\\s+\\d{4})?';
+const BRACKETED_ARTWORK_EDITION = new RegExp(`\\s*[([]\\s*(?:${EDITION_LABEL})\\s*[)\\]]\\s*$`, 'i');
+const SEPARATED_ARTWORK_EDITION = new RegExp(`\\s*[-–—:]\\s*(?:${EDITION_LABEL})\\s*$`, 'i');
+const UNSEPARATED_ARTWORK_EDITION = new RegExp(
+  `\\s+(?:explicit(?:\\s+version)?|clean(?:\\s+version)?|(?:super\\s+)?deluxe\\s+edition|expanded\\s+edition|special\\s+edition|digital\\s+edition|bonus\\s+tracks?(?:\\s+(?:version|edition))|(?:(?:\\d{4}|\\d+(?:st|nd|rd|th))\\s+)?anniversary\\s+edition|(?:\\d{4}\\s+)?remaster(?:ed)?(?:\\s+\\d{4})?)\\s*$`,
+  'i'
+);
+const EDITION_LABEL_ONLY = new RegExp(`^(?:${EDITION_LABEL})$`, 'i');
+const TRAILING_BRACKET_GROUP = /\s*[([]([^()[\]]*)[)\]]\s*$/;
+
+/**
+ * Roon sometimes appends an edition marker *and* a separate release subtitle, e.g.
+ * "Eternal Atake (Deluxe) [LUV vs. The World 2]". Neither trailing regex above fires
+ * because the outermost bracket ("[LUV vs. The World 2]") isn't edition vocabulary, which
+ * blocks stripping the "(Deluxe)" marker beneath it. Peel trailing bracket groups one at a
+ * time; if any of them is a recognized edition label, drop the whole run. A run with no
+ * recognized label (e.g. a genuine subtitle like "[Live]") is left untouched.
+ */
+function stripTrailingEditionBracketRun(value: string): string {
+  const peeled: string[] = [];
+  let working = value;
+  for (let match = TRAILING_BRACKET_GROUP.exec(working); match; match = TRAILING_BRACKET_GROUP.exec(working)) {
+    peeled.push(match[1]?.trim() ?? '');
+    working = working.slice(0, match.index).trim();
+  }
+  if (!peeled.length) return value;
+  return peeled.some((label) => EDITION_LABEL_ONLY.test(label)) ? working : value;
+}
 
 /**
  * Removes trailing playback-service edition labels that are not part of the canonical
@@ -52,11 +81,13 @@ export function albumForArtwork(value: string): string {
   const original = value.trim();
   let album = original;
   for (let pass = 0; pass < 4; pass += 1) {
-    const stripped = album
-      .replace(BRACKETED_ARTWORK_EDITION, '')
-      .replace(SEPARATED_ARTWORK_EDITION, '')
-      .replace(UNSEPARATED_ARTWORK_EDITION, '')
-      .trim();
+    const stripped = stripTrailingEditionBracketRun(
+      album
+        .replace(BRACKETED_ARTWORK_EDITION, '')
+        .replace(SEPARATED_ARTWORK_EDITION, '')
+        .replace(UNSEPARATED_ARTWORK_EDITION, '')
+        .trim()
+    );
     if (!stripped || stripped === album) break;
     album = stripped;
   }
@@ -83,7 +114,7 @@ export function selectArtworkMatch(
       (candidate) =>
         candidate.score >= 95 &&
         candidate.hasFrontArtwork !== false &&
-        normalizeMetadata(candidate.artist) === normalizedArtist &&
+        candidate.artists.some((name) => normalizeMetadata(name) === normalizedArtist) &&
         normalizeMetadata(albumForArtwork(candidate.title)) === normalizedAlbum
     )
     .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id));
@@ -119,7 +150,7 @@ export function selectMusicBrainzReleaseGroup(
     .filter(
       (candidate) =>
         candidate.score >= 95 &&
-        normalizeMetadata(candidate.artist) === normalizedArtist &&
+        candidate.artists.some((name) => normalizeMetadata(name) === normalizedArtist) &&
         normalizeMetadata(albumForArtwork(candidate.title)) === normalizedAlbum
     )
     .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id));

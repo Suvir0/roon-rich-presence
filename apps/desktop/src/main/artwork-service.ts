@@ -15,7 +15,6 @@ interface CacheEntry {
 
 interface MusicBrainzArtistCredit {
   name?: unknown;
-  joinphrase?: unknown;
 }
 
 interface MusicBrainzReleaseGroup {
@@ -46,16 +45,12 @@ interface ArtworkServiceDependencies {
   sleep(milliseconds: number): Promise<void>;
 }
 
-function getArtistCredit(value: unknown): string {
-  if (!Array.isArray(value)) return '';
-  return value
-    .map((value) => {
-      const credit = value as MusicBrainzArtistCredit | null;
-      return `${typeof credit?.name === 'string' ? credit.name : ''}${
-        typeof credit?.joinphrase === 'string' ? credit.joinphrase : ''
-      }`;
-    })
-    .join('');
+function getArtistCredits(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry) => {
+    const credit = entry as MusicBrainzArtistCredit | null;
+    return typeof credit?.name === 'string' ? [credit.name] : [];
+  });
 }
 
 export class ArtworkService {
@@ -100,8 +95,9 @@ export class ArtworkService {
     }
     const lookupArtist = primaryArtistForArtwork(artist);
     const lookupAlbum = albumForArtwork(album);
-    // v3 invalidates cached misses from before Roon edition suffixes were canonicalized.
-    const key = `v3:${artworkCacheKey(lookupArtist, lookupAlbum)}`;
+    // v4 invalidates cached misses from before compound edition/subtitle suffixes and
+    // collaboration artist credits (e.g. "Dave & Central Cee") were matched correctly.
+    const key = `v4:${artworkCacheKey(lookupArtist, lookupAlbum)}`;
     if (!key.replace('\u0000', '')) {
       return { status: 'miss', message: 'Artist and album are required for artwork matching' };
     }
@@ -188,7 +184,7 @@ export class ArtworkService {
               {
                 id: group.id,
                 title: group.title,
-                artist: getArtistCredit(group['artist-credit']),
+                artists: getArtistCredits(group['artist-credit']),
                 score: Number(group.score ?? 0),
                 // Search responses omit this field; CAA is queried below.
                 hasFrontArtwork: false
