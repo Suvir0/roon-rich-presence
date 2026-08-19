@@ -21,3 +21,6 @@ native/discord-bridge/build/
 *.exe
 *.blockmap
 latest*.yml
+
+# Wrangler build and login state for the product site deploy.
+.wrangler/

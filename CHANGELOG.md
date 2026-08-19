@@ -4,6 +4,9 @@ This project follows semantic versioning. Dates use the ISO 8601 format.
 
 ## Unreleased
 
+- Rebuilt the product site at [rrp.suvir.net](https://rrp.suvir.net) in the application's Classical design, using the same vendored Cormorant Garamond and Lora files, and replaced the illustrated presence mock-up with screenshots captured from a running build
+- Added `scripts/capture-app-screenshots.mjs`, which drives a running application build over the Chrome DevTools Protocol to regenerate every site screenshot in both themes
+- Documented the 0.2.0 feature set on the site, including theme switching, manual host and API port entry, opt-in artwork matching, and the separate Apple Silicon and Intel downloads
 - Removed polynomial backtracking from the two artwork metadata regexes that normalize Roon-supplied artist and album strings (CodeQL `js/polynomial-redos`). Behavior is unchanged
 - Made the repository public and documented that only macOS installers are published; Windows and Linux must be built from source until the release workflow has Discord Social SDK credentials
 

@@ -13,5 +13,10 @@ for (const file of ['index.html', 'styles.css', 'script.js', 'og.png']) {
   await cp(resolve(root, 'website', file), resolve(client, file));
 }
 
+// Fonts and application screenshots ship as whole directories.
+for (const directory of ['fonts', 'screenshots']) {
+  await cp(resolve(root, 'website', directory), resolve(client, directory), { recursive: true });
+}
+
 await cp(resolve(root, 'website/worker.js'), resolve(server, 'index.js'));
 console.log('Built the Roon Rich Presence site for Cloudflare Workers.');

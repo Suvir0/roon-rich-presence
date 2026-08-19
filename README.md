@@ -6,6 +6,8 @@ It runs on your computer, connects to Roon over your local network, and talks to
 
 This is an independent project. It is not affiliated with Roon Labs or Discord.
 
+The product site is [rrp.suvir.net](https://rrp.suvir.net); its source lives in `website/`.
+
 ## Current status
 
 Roon Rich Presence is a public beta.
@@ -155,6 +157,32 @@ npm run package:linux
 ```
 
 Local packages are for testing. The protected GitHub Actions release workflow creates clearly labeled beta installers, checksums, an SBOM, and provenance. The macOS beta is ad-hoc signed but not Developer ID signed or notarized.
+
+### Product site
+
+The site served at [rrp.suvir.net](https://rrp.suvir.net) lives in `website/` and is deployed as a
+Cloudflare Worker that serves static assets.
+
+```sh
+npm run site:build
+npx wrangler deploy
+```
+
+`npm run site:build` writes `dist/client` (the static assets) and `dist/server/index.js` (the
+Worker entry point).
+
+The screenshots in `website/screenshots/` are captures of the real interface. Regenerate them by
+starting a build with remote debugging enabled, connecting it to Roon, playing something, and
+running the capture script:
+
+```sh
+"/Applications/Roon Rich Presence.app/Contents/MacOS/Roon Rich Presence" --remote-debugging-port=9222
+npm run site:screenshots
+```
+
+The script captures both themes, restores the settings it found, and writes only image files.
+Screenshots are published as they were captured, so review them for anything personal — zone names
+and the current track appear in them — before committing.
 
 ## Maintainer release setup
 
