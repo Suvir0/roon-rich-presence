@@ -27,6 +27,8 @@
     "build": "npm run build -w @rrp/core && npm run build -w @rrp/desktop",
     "audit:prod": "npm audit --omit=dev --audit-level=high",
     "secrets:check": "node scripts/check-sensitive-files.mjs",
+    "site:build": "node scripts/build-website-site.mjs",
+    "site:screenshots": "node scripts/capture-app-screenshots.mjs",
     "package": "npm run package -w @rrp/desktop",
     "package:mac": "npm run package:mac -w @rrp/desktop",
     "package:mac:beta": "npm run package:mac:beta -w @rrp/desktop",

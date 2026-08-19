@@ -1,0 +1,18 @@
+# Cloudflare Worker that serves the product site from dist/, built by
+# "npm run site:build". See the Product site section of README.md.
+
+name = "roon-rich-presence-site"
+main = "dist/server/index.js"
+compatibility_date = "2026-08-01"
+workers_dev = true
+
+[assets]
+directory = "dist/client"
+binding = "ASSETS"
+
+# rrp.suvir.net is served by this Worker as a custom domain, which means
+# Cloudflare owns its DNS record. The hostname must have no other A or CNAME
+# record in the suvir.net zone, or the trigger update is rejected.
+[[routes]]
+pattern = "rrp.suvir.net"
+custom_domain = true

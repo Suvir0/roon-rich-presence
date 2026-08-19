@@ -1,35 +1,46 @@
 <!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#0b0d0f" />
+    <meta name="theme-color" content="#f3f2f2" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1c1a17" media="(prefers-color-scheme: dark)" />
     <meta
       name="description"
-      content="Roon Rich Presence is a private, local-first desktop companion that shares your Roon playback on Discord."
+      content="Roon Rich Presence is a local-first macOS companion that publishes what you are playing in Roon to your Discord profile. No account, no hosted service, no telemetry."
     />
     <meta property="og:title" content="Roon Rich Presence" />
     <meta
       property="og:description"
-      content="Your Roon listening session, live on Discord — with no account, cloud service, or telemetry."
+      content="Your Roon listening session, live on Discord — no account, no cloud service, no telemetry."
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://rrp.suvir.net/" />
     <meta property="og:image" content="https://rrp.suvir.net/og.png" />
+    <meta property="og:image:width" content="2400" />
+    <meta property="og:image:height" content="1260" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Roon Rich Presence" />
     <meta
       name="twitter:description"
-      content="Your Roon listening session, live on Discord — with no account, cloud service, or telemetry."
+      content="Your Roon listening session, live on Discord — no account, no cloud service, no telemetry."
     />
     <meta name="twitter:image" content="https://rrp.suvir.net/og.png" />
     <link rel="canonical" href="https://rrp.suvir.net/" />
+    <link
+      rel="preload"
+      href="fonts/cormorant-garamond-variable.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="preload" href="fonts/lora-variable.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="styles.css" />
     <title>Roon Rich Presence — Roon, live on Discord</title>
     <script>
       try {
         document.documentElement.dataset.theme =
-          localStorage.getItem('suvir-theme') === 'light' ? 'light' : 'dark';
+          localStorage.getItem('suvir-theme') === 'dark' ? 'dark' : 'light';
       } catch (_) {}
     </script>
   </head>
@@ -39,11 +50,21 @@
     <header class="site-header">
       <div class="header-inner">
         <a class="brand" href="#top" aria-label="Roon Rich Presence, home">
-          <span class="brand-mark" aria-hidden="true">RRP</span>
-          <span>Roon Rich Presence</span>
+          <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path
+              d="M2 12h3.2l2-6.4 3 13.2 2.6-9.4 1.9 5.2 1.5-2.6H22"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          <span class="brand-name">Roon Rich Presence</span>
         </a>
         <nav class="desktop-nav" aria-label="Primary navigation">
           <a href="#overview">Overview</a>
+          <a href="#screens">The app</a>
           <a href="#workflow">How it works</a>
           <a href="#privacy">Privacy</a>
           <a href="#install">Install</a>
@@ -56,12 +77,14 @@
             aria-label="Toggle color theme"
             title="Toggle color theme"
           >
-            <span aria-hidden="true">◐</span><span class="theme-label">Theme</span>
+            <span class="theme-light-only" aria-hidden="true">☾</span>
+            <span class="theme-dark-only" aria-hidden="true">☀</span>
           </button>
           <details class="mobile-menu">
             <summary aria-label="Open navigation">Menu</summary>
             <nav aria-label="Mobile navigation">
               <a href="#overview">Overview</a>
+              <a href="#screens">The app</a>
               <a href="#workflow">How it works</a>
               <a href="#privacy">Privacy</a>
               <a href="#install">Install</a>
@@ -73,99 +96,345 @@
     </header>
 
     <main id="main-content">
-      <section id="top" class="hero section-shell" aria-labelledby="hero-title">
+      <section id="top" class="hero" aria-labelledby="hero-title">
         <div class="hero-copy">
-          <p class="eyebrow">Local desktop companion · macOS first · Open beta</p>
-          <h1 id="hero-title">Your Roon session, live on Discord.</h1>
+          <p class="eyebrow">Version 0.2.0 · Public beta · macOS</p>
+          <h1 id="hero-title">Your Roon session, live on&nbsp;Discord.</h1>
           <p class="hero-intro">
-            Roon Rich Presence connects Roon playback to your Discord profile with track, artist,
-            album, artwork, and progress — without an account, hosted service, or listening history.
+            A small desktop companion that reads playback from your Roon Server over the local
+            network and hands it to the Discord client already running beside it — track, artist,
+            album, progress, and optional cover art. No account, no service of ours, no listening
+            history kept anywhere.
           </p>
-          <div class="hero-actions" aria-label="Primary actions">
+          <div class="hero-actions">
             <a class="primary-action" href="https://github.com/Suvir0/roon-rich-presence/releases">
               Download for macOS <span aria-hidden="true">↗</span>
             </a>
             <a class="text-action" href="https://github.com/Suvir0/roon-rich-presence">
-              View source <span aria-hidden="true">↗</span>
+              Read the source <span aria-hidden="true">↗</span>
             </a>
           </div>
           <p class="release-note">
-            <span class="status-dot" aria-hidden="true"></span>Open beta · Free and open source
-            under the MIT License
+            <span class="status-dot" aria-hidden="true"></span>Apple Silicon and Intel builds · MIT
+            licensed · Free
           </p>
         </div>
 
-        <div class="hero-system" aria-label="Preview of a Roon listening session shared to Discord">
-          <div class="system-heading">
-            <span>Presence preview</span><span>Connected / Live</span>
-          </div>
-          <div class="presence-stage">
-            <div class="discord-card">
-              <div class="card-label"><span class="discord-dot"></span>Playing Roon</div>
-              <div class="presence-content">
-                <div class="album-art" aria-hidden="true"><span>RRP</span></div>
-                <div class="track-copy">
-                  <strong>Everything In Its Right Place</strong>
-                  <span>Radiohead</span>
-                  <span>Kid A</span>
-                  <div class="progress"><i></i></div>
-                  <small>2:14 elapsed · Living Room</small>
-                </div>
-              </div>
+        <figure class="hero-figure">
+          <div class="window-frame">
+            <div class="window-bar" aria-hidden="true">
+              <span></span><span></span><span></span>
+              <em>Roon Rich Presence</em>
             </div>
-            <div class="signal-line" aria-hidden="true">
-              <span>Roon</span><i></i><span>RRP</span><i></i><span>Discord</span>
-            </div>
+            <img
+              class="shot theme-light-only"
+              src="screenshots/dashboard-light.webp"
+              width="2006"
+              height="1640"
+              alt="The Roon Rich Presence dashboard in its light theme: album art, track title, artist, playback progress on the left, and Roon connection, zone selection, and sharing switches on the right."
+            />
+            <img
+              class="shot theme-dark-only"
+              src="screenshots/dashboard-dark.webp"
+              width="2006"
+              height="1640"
+              alt="The same dashboard in its dark theme."
+            />
           </div>
-          <p class="availability">
-            <span class="status-dot" aria-hidden="true"></span>Playback stays on your computer and
-            local network
-          </p>
-        </div>
+          <figcaption>
+            The dashboard, captured from a running build — Roon connected, Discord connected,
+            activity published.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section class="ledger" aria-label="At a glance">
+        <dl>
+          <div>
+            <dt>Runs</dt>
+            <dd>On your Mac</dd>
+          </div>
+          <div>
+            <dt>Accounts</dt>
+            <dd>None</dd>
+          </div>
+          <div>
+            <dt>Telemetry</dt>
+            <dd>None</dd>
+          </div>
+          <div>
+            <dt>Artwork</dt>
+            <dd>Opt-in</dd>
+          </div>
+          <div>
+            <dt>License</dt>
+            <dd>MIT</dd>
+          </div>
+        </dl>
       </section>
 
       <section id="overview" class="section-shell ruled-section" aria-labelledby="overview-title">
         <div class="section-index">
-          <span>01</span>
+          <span>I</span>
           <p>Overview</p>
         </div>
         <div class="section-content">
           <div class="section-heading-row">
             <h2 id="overview-title">One small bridge between two desktop apps.</h2>
-            <p>Built to disappear into the menu bar once setup is complete.</p>
+            <p>Set it up once, then let it live in the menu bar.</p>
           </div>
           <div class="feature-grid">
             <article>
-              <span>01</span>
-              <h3>Automatic discovery</h3>
+              <h3>Finds Roon by itself</h3>
               <p>
-                Finds Roon Servers on your local network and uses each server's advertised API port.
+                Discovery uses the API port each Roon Server advertises. When a network blocks it,
+                enter a host — and, under Advanced, the exact API port — and press Save and Connect.
               </p>
             </article>
             <article>
-              <span>02</span>
-              <h3>Rich playback detail</h3>
-              <p>Shares the track, artist, album, progress, zone, and optional public artwork.</p>
-            </article>
-            <article>
-              <span>03</span>
-              <h3>Your rules</h3>
+              <h3>One zone, or whichever is playing</h3>
               <p>
-                Control paused activity, album details, progress, zone names, and artwork lookup.
+                Pin the companion to a single room, or let automatic mode follow whichever zone
+                starts playing.
               </p>
             </article>
             <article>
-              <span>04</span>
-              <h3>Native companion</h3>
-              <p>Lives in the macOS menu bar or Windows and Linux system tray.</p>
+              <h3>You choose what friends see</h3>
+              <p>
+                Album, progress, and zone name are individual switches. Paused activity can stay
+                visible without a timestamp, or disappear entirely.
+              </p>
             </article>
+            <article>
+              <h3>Opt-in album covers</h3>
+              <p>
+                Turn artwork on and artist and album text go to MusicBrainz to find a public Cover
+                Art Archive image. Off by default, and nothing else leaves the machine.
+              </p>
+            </article>
+            <article>
+              <h3>Light and dark, by hand</h3>
+              <p>
+                The interface ships in a cream-and-gold Classical light theme with a dark
+                counterpart, remembered between launches.
+              </p>
+            </article>
+            <article>
+              <h3>Quiet by default</h3>
+              <p>
+                Lives in the macOS menu bar — or the Windows and Linux tray — with optional start at
+                login and a hidden launch.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="screens" class="section-shell ruled-section" aria-labelledby="screens-title">
+        <div class="section-index">
+          <span>II</span>
+          <p>The app</p>
+        </div>
+        <div class="section-content">
+          <div class="section-heading-row">
+            <h2 id="screens-title">Every screen, as it actually looks.</h2>
+            <p>Screenshots taken from a running build connected to a real Roon Server.</p>
+          </div>
+
+          <div class="gallery" data-gallery>
+            <div class="gallery-tabs" role="tablist" aria-label="Application screens">
+              <button role="tab" id="tab-setup" aria-controls="panel-setup" aria-selected="true">
+                Setup
+              </button>
+              <button role="tab" id="tab-zones" aria-controls="panel-zones" aria-selected="false">
+                Zones
+              </button>
+              <button
+                role="tab"
+                id="tab-sharing"
+                aria-controls="panel-sharing"
+                aria-selected="false"
+              >
+                Sharing
+              </button>
+              <button
+                role="tab"
+                id="tab-artwork"
+                aria-controls="panel-artwork"
+                aria-selected="false"
+              >
+                Artwork
+              </button>
+              <button
+                role="tab"
+                id="tab-playing"
+                aria-controls="panel-playing"
+                aria-selected="false"
+              >
+                Now playing
+              </button>
+            </div>
+
+            <figure
+              class="gallery-panel"
+              role="tabpanel"
+              id="panel-setup"
+              aria-labelledby="tab-setup"
+            >
+              <div class="plate plate-crop">
+                <img
+                  class="shot theme-light-only"
+                  src="screenshots/setup-light.webp"
+                  width="2006"
+                  height="2273"
+                  loading="lazy"
+                  alt="The setup screen, titled Set up Roon Presence, with three numbered movements: Connect Roon, Choose a zone, and Album artwork."
+                />
+                <img
+                  class="shot theme-dark-only"
+                  src="screenshots/setup-dark.webp"
+                  width="2006"
+                  height="2273"
+                  loading="lazy"
+                  alt="The same setup screen in the dark theme."
+                />
+              </div>
+              <figcaption>
+                <strong>Three movements, once.</strong> Connect Roon, choose a zone, decide about
+                artwork. Discovery keeps retrying in the background while you read.
+              </figcaption>
+            </figure>
+
+            <figure
+              class="gallery-panel"
+              role="tabpanel"
+              id="panel-zones"
+              aria-labelledby="tab-zones"
+              hidden
+            >
+              <div class="plate">
+                <img
+                  class="shot theme-light-only"
+                  src="screenshots/zones-light.webp"
+                  width="1236"
+                  height="537"
+                  loading="lazy"
+                  alt="The playback zone list showing an Automatic option plus three discovered Roon zones with their playing, paused, and stopped states."
+                />
+                <img
+                  class="shot theme-dark-only"
+                  src="screenshots/zones-dark.webp"
+                  width="1236"
+                  height="537"
+                  loading="lazy"
+                  alt="The same zone list in the dark theme."
+                />
+              </div>
+              <figcaption>
+                <strong>Zones, with live state.</strong> Every zone the server reports, each showing
+                whether it is playing, paused, or stopped.
+              </figcaption>
+            </figure>
+
+            <figure
+              class="gallery-panel"
+              role="tabpanel"
+              id="panel-sharing"
+              aria-labelledby="tab-sharing"
+              hidden
+            >
+              <div class="plate">
+                <img
+                  class="shot theme-light-only"
+                  src="screenshots/sharing-light.webp"
+                  width="1236"
+                  height="829"
+                  loading="lazy"
+                  alt="The What friends see section with switches for sharing listening activity, album, progress, zone, and showing activity while paused."
+                />
+                <img
+                  class="shot theme-dark-only"
+                  src="screenshots/sharing-dark.webp"
+                  width="1236"
+                  height="829"
+                  loading="lazy"
+                  alt="The same sharing switches in the dark theme."
+                />
+              </div>
+              <figcaption>
+                <strong>Field by field.</strong> Nothing is published that you have not switched on,
+                and the whole thing turns off from the header or the menu bar.
+              </figcaption>
+            </figure>
+
+            <figure
+              class="gallery-panel"
+              role="tabpanel"
+              id="panel-artwork"
+              aria-labelledby="tab-artwork"
+              hidden
+            >
+              <div class="plate">
+                <img
+                  class="shot theme-light-only"
+                  src="screenshots/artwork-light.webp"
+                  width="1236"
+                  height="355"
+                  loading="lazy"
+                  alt="The album artwork section, marked opt-in, with a switch for finding album covers and a link to the MusicBrainz privacy policy."
+                />
+                <img
+                  class="shot theme-dark-only"
+                  src="screenshots/artwork-dark.webp"
+                  width="1236"
+                  height="355"
+                  loading="lazy"
+                  alt="The same album artwork section in the dark theme."
+                />
+              </div>
+              <figcaption>
+                <strong>Artwork is a decision, not a default.</strong> The switch is off until you
+                turn it on, and the privacy policy it depends on is one click away.
+              </figcaption>
+            </figure>
+
+            <figure
+              class="gallery-panel"
+              role="tabpanel"
+              id="panel-playing"
+              aria-labelledby="tab-playing"
+              hidden
+            >
+              <div class="plate plate-narrow">
+                <img
+                  class="shot theme-light-only"
+                  src="screenshots/now-playing-light.webp"
+                  width="720"
+                  height="1240"
+                  loading="lazy"
+                  alt="The now playing panel: cover art, track title, artist, zone name, and a progress bar with elapsed and total time."
+                />
+                <img
+                  class="shot theme-dark-only"
+                  src="screenshots/now-playing-dark.webp"
+                  width="720"
+                  height="1240"
+                  loading="lazy"
+                  alt="The same now playing panel in the dark theme."
+                />
+              </div>
+              <figcaption>
+                <strong>What is on right now.</strong> Cover, title, artist, zone, and progress —
+                with a Published badge when Discord has accepted the activity.
+              </figcaption>
+            </figure>
           </div>
         </div>
       </section>
 
       <section id="workflow" class="section-shell ruled-section" aria-labelledby="workflow-title">
         <div class="section-index">
-          <span>02</span>
+          <span>III</span>
           <p>How it works</p>
         </div>
         <div class="section-content">
@@ -173,27 +442,51 @@
             <h2 id="workflow-title">A direct path from playback to presence.</h2>
             <p>No remote control plane sits in the middle.</p>
           </div>
-          <div class="pipeline" aria-label="Roon Rich Presence data flow">
-            <div>
-              <span>01</span><strong>Discover</strong>
+          <ol class="pipeline" aria-label="Roon Rich Presence data flow">
+            <li>
+              <span>I</span><strong>Discover</strong>
               <p>Find Roon on the local network.</p>
-            </div>
-            <div>
-              <span>02</span><strong>Authorize</strong>
+            </li>
+            <li>
+              <span>II</span><strong>Authorize</strong>
               <p>Enable the extension inside Roon.</p>
+            </li>
+            <li>
+              <span>III</span><strong>Observe</strong>
+              <p>Read the zone you chose.</p>
+            </li>
+            <li>
+              <span>IV</span><strong>Map</strong>
+              <p>Apply only the fields you enabled.</p>
+            </li>
+            <li>
+              <span>V</span><strong>Publish</strong>
+              <p>Hand it to the local Discord client.</p>
+            </li>
+          </ol>
+          <div class="published-proof">
+            <div class="plate plate-tight">
+              <img
+                class="shot theme-light-only"
+                src="screenshots/published-light.webp"
+                width="664"
+                height="272"
+                loading="lazy"
+                alt="The Published to Discord panel showing the exact activity line that was sent."
+              />
+              <img
+                class="shot theme-dark-only"
+                src="screenshots/published-dark.webp"
+                width="664"
+                height="272"
+                loading="lazy"
+                alt="The same Published to Discord panel in the dark theme."
+              />
             </div>
-            <div>
-              <span>03</span><strong>Observe</strong>
-              <p>Read playback from your chosen zone.</p>
-            </div>
-            <div>
-              <span>04</span><strong>Map</strong>
-              <p>Apply only the fields you enable.</p>
-            </div>
-            <div>
-              <span>05</span><strong>Publish</strong>
-              <p>Update the local Discord client.</p>
-            </div>
+            <p>
+              The app shows the exact activity it handed to Discord, and says plainly when nothing
+              is being sent — sharing off, Discord closed, or nothing playing.
+            </p>
           </div>
         </div>
       </section>
@@ -204,7 +497,7 @@
         aria-labelledby="privacy-title"
       >
         <div class="section-index">
-          <span>03</span>
+          <span>IV</span>
           <p>Privacy</p>
         </div>
         <div class="section-content privacy-layout">
@@ -212,8 +505,10 @@
             <p class="eyebrow">Local by design</p>
             <h2 id="privacy-title">Your listening history is not the product.</h2>
             <p class="large-copy">
-              Roon discovery and playback monitoring stay on your machine and local network. There
-              is no RRP account, no analytics pipeline, and no automatic diagnostic upload.
+              Discovery and playback monitoring stay on your machine and your local network. There
+              is no account, no analytics pipeline, and no automatic diagnostic upload. Roon
+              authorization is kept in the operating system's secure storage when it is available,
+              and the interface's fonts are bundled with the app, so it does not call out on launch.
             </p>
             <a
               class="text-action"
@@ -236,15 +531,15 @@
             </div>
             <div>
               <dt>Artwork lookup</dt>
-              <dd>Optional · off by default</dd>
+              <dd>Opt-in · off by default</dd>
             </div>
             <div>
               <dt>Diagnostics</dt>
               <dd>Local · bounded · redacted</dd>
             </div>
             <div>
-              <dt>License</dt>
-              <dd>MIT</dd>
+              <dt>Source</dt>
+              <dd>Public · MIT</dd>
             </div>
           </dl>
         </div>
@@ -256,49 +551,54 @@
         aria-labelledby="install-title"
       >
         <div class="section-index">
-          <span>04</span>
+          <span>V</span>
           <p>Install</p>
         </div>
         <div class="section-content">
           <div class="section-heading-row">
             <h2 id="install-title">Connect once. Let it run quietly.</h2>
-            <p>macOS is the primary target; Windows and Linux can be built from source.</p>
+            <p>macOS is the published target; Windows and Linux build from source.</p>
           </div>
           <ol class="install-list">
             <li>
-              <span>01</span>
+              <span>I</span>
               <div>
                 <strong>Download the beta</strong>
                 <p>
-                  Get the current macOS build from GitHub Releases and verify it against the
-                  published checksum.
+                  Take the Apple Silicon (arm64) or Intel (x64) disk image from GitHub Releases and
+                  check it against the published <code>SHA256SUMS-mac-beta.txt</code>.
                 </p>
               </div>
             </li>
             <li>
-              <span>02</span>
+              <span>II</span>
               <div>
-                <strong>Connect to Roon</strong>
+                <strong>Open it the first time</strong>
                 <p>
-                  Enable Roon Rich Presence in Roon → Settings → Extensions. If discovery is
-                  blocked, enter the server host and press Save and Connect. Host-only mode tries
-                  directed discovery, then a bounded local API-port fallback; an exact port is
-                  preferred when known.
+                  Beta builds are ad-hoc signed rather than notarized, so Control-click the app and
+                  choose Open, then allow Local Network access when macOS asks. Discovery needs it.
                 </p>
               </div>
             </li>
             <li>
-              <span>03</span>
+              <span>III</span>
               <div>
-                <strong>Choose a playback zone</strong>
-                <p>Select one zone or follow whichever zone becomes active.</p>
+                <strong>Enable the extension in Roon</strong>
+                <p>
+                  Roon → Settings → Extensions → Roon Rich Presence → Enable. If discovery is
+                  blocked, enter the server host and press Save and Connect; an exact API port under
+                  Advanced is the most direct route.
+                </p>
               </div>
             </li>
             <li>
-              <span>04</span>
+              <span>IV</span>
               <div>
-                <strong>Keep Discord open</strong>
-                <p>The desktop companion updates your activity while music is playing.</p>
+                <strong>Choose a zone and keep Discord open</strong>
+                <p>
+                  Pick one room or follow the active zone. The companion updates your Discord
+                  activity while music plays and stays in the menu bar after you close the window.
+                </p>
               </div>
             </li>
           </ol>
@@ -309,9 +609,54 @@
             <a
               class="text-action"
               href="https://github.com/Suvir0/roon-rich-presence#development-setup"
-              >Developer setup <span aria-hidden="true">↗</span></a
+              >Build it yourself <span aria-hidden="true">↗</span></a
             >
           </div>
+          <p class="install-footnote">
+            Automatic updates are off in unsigned beta builds — new versions are installed by hand
+            from Releases. Windows and Linux packages are built locally with
+            <code>npm run package:win</code> or <code>npm run package:linux</code>.
+          </p>
+        </div>
+      </section>
+
+      <section id="changes" class="section-shell ruled-section" aria-labelledby="changes-title">
+        <div class="section-index">
+          <span>VI</span>
+          <p>Latest</p>
+        </div>
+        <div class="section-content">
+          <div class="section-heading-row">
+            <h2 id="changes-title">What changed in 0.2.0.</h2>
+            <p>Released 17 August 2026.</p>
+          </div>
+          <ul class="change-list">
+            <li>
+              <strong>A new interface.</strong> The whole app was rebuilt around a Classical
+              document layout: a serif card, roman-numeral onboarding, and a two-column dashboard
+              that keeps now playing beside the settings.
+            </li>
+            <li>
+              <strong>Light and dark themes.</strong> A toggle in the header, remembered per user.
+            </li>
+            <li>
+              <strong>Fonts travel with the app.</strong> Cormorant Garamond and Lora are bundled
+              instead of fetched from Google Fonts, so nothing is requested at launch.
+            </li>
+            <li>
+              <strong>Roughly 40% smaller on disk.</strong> About 306 MB installed per architecture,
+              down from about 530 MB, with the packaged bundle down from 17 MB to about 5.2 MB.
+            </li>
+            <li>
+              <strong>Smaller downloads.</strong> Separate Apple Silicon and Intel builds instead of
+              one universal binary.
+            </li>
+          </ul>
+          <a
+            class="text-action"
+            href="https://github.com/Suvir0/roon-rich-presence/blob/main/CHANGELOG.md"
+            >Full changelog <span aria-hidden="true">↗</span></a
+          >
         </div>
       </section>
     </main>
@@ -324,9 +669,10 @@
         </div>
         <div class="footer-contact-copy">
           <p>
-            Independent and designed around local control. The source is open under the MIT License
-            and beta downloads are published on GitHub Releases. Roon Rich Presence is not
-            affiliated with Roon Labs or Discord.
+            Independent and built around local control. The source is open under the MIT License and
+            beta downloads are published on GitHub Releases. Roon Rich Presence is not affiliated
+            with Roon Labs or Discord; album covers shown in these screenshots come from the Cover
+            Art Archive and belong to their respective owners.
           </p>
           <a class="contact-email" href="https://github.com/Suvir0/roon-rich-presence"
             >github.com/Suvir0/roon-rich-presence <span aria-hidden="true">↗</span></a
@@ -334,13 +680,14 @@
           <nav class="social-links" aria-label="Project links">
             <a href="https://github.com/Suvir0/roon-rich-presence">Source ↗</a>
             <a href="https://github.com/Suvir0/roon-rich-presence/issues">Issues ↗</a>
+            <a href="https://github.com/Suvir0/roon-rich-presence/releases">Releases ↗</a>
             <a href="https://suvir.net">Suvir.net ↗</a>
           </nav>
         </div>
       </div>
       <div class="site-footer section-shell">
         <p>© 2026 Suvir Potdar</p>
-        <p>Local-first · Open beta</p>
+        <p>Local-first · Public beta · v0.2.0</p>
         <p>TypeScript · Electron · Cloudflare Workers</p>
       </div>
     </footer>
