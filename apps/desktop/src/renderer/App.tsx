@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AppSettingsPatch } from '../shared/contracts';
+import { nextThemeMode } from './theme';
 import { Dashboard } from './components/Dashboard';
 import { Header } from './components/Header';
 import { Icon } from './components/Icon';
@@ -42,14 +43,17 @@ export default function App() {
   }, [api]);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = snapshot.settings.theme;
-  }, [snapshot.settings.theme]);
+    document.documentElement.dataset.theme = snapshot.resolvedTheme;
+  }, [snapshot.resolvedTheme]);
 
   const update = (patch: AppSettingsPatch) => {
     const sequence = ++updateSequence.current;
     const previous = snapshotRef.current;
     const optimistic: UiSnapshot = {
       ...previous,
+      // An explicit light/dark choice needs no round trip; only `system` has to be
+      // resolved by the main process against the current OS appearance.
+      ...(patch.theme && patch.theme !== 'system' ? { resolvedTheme: patch.theme } : {}),
       settings: {
         ...previous.settings,
         ...patch,
@@ -131,9 +135,7 @@ export default function App() {
         <Header
           snapshot={snapshot}
           onTogglePresence={() => update({ presenceEnabled: !snapshot.settings.presenceEnabled })}
-          onToggleTheme={() =>
-            update({ theme: snapshot.settings.theme === 'dark' ? 'light' : 'dark' })
-          }
+          onCycleTheme={() => update({ theme: nextThemeMode(snapshot.settings.theme) })}
         />
 
         {!snapshot.onboardingComplete ? (

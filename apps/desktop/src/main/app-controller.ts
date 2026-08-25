@@ -1,4 +1,4 @@
-import { app } from 'electron';
+import { app, nativeTheme } from 'electron';
 import {
   EMPTY_THROTTLE_STATE,
   mapPresence,
@@ -15,6 +15,7 @@ import type {
   AppSnapshot,
   PlaybackState,
   PresencePreview,
+  ResolvedTheme,
   ZoneSummary
 } from '../shared/contracts';
 import { ArtworkService } from './artwork-service';
@@ -168,6 +169,7 @@ export class AppController {
 
   async initialize(): Promise<void> {
     this.settings = this.settingsStore.load();
+    this.applyThemeSource();
     // Logging must never prevent the app from reaching the UI.
     await this.diagnosticLog.initialize().catch(() => undefined);
     await this.artwork.initialize();
@@ -200,6 +202,7 @@ export class AppController {
     return {
       version: app.getVersion(),
       settings: { ...this.settings },
+      resolvedTheme: this.getResolvedTheme(),
       ...(this.playback
         ? {
             playback: {
@@ -227,6 +230,7 @@ export class AppController {
     const oldManual = this.getManualRoonAddress();
     this.settings = this.settingsStore.update(patch);
     this.applyLoginItemSettings();
+    this.applyThemeSource();
     if (patch.zoneMode === 'automatic' || patch.zoneMode === 'selected') {
       this.automaticZoneId = undefined;
     }
@@ -472,6 +476,24 @@ export class AppController {
       );
       this.throttleTimer.unref();
     }
+  }
+
+  /** Republishes the snapshot when the operating system switches appearance. */
+  handleNativeThemeChange(): void {
+    if (this.settings?.theme === 'system') this.emit();
+  }
+
+  private getResolvedTheme(): ResolvedTheme {
+    if (this.settings.theme !== 'system') return this.settings.theme;
+    return nativeTheme.shouldUseDarkColors ? 'dark' : 'light';
+  }
+
+  /**
+   * Electron owns the resolution of `system`, and driving themeSource also keeps
+   * native surfaces (menus, dialogs, scrollbars) aligned with the chosen mode.
+   */
+  private applyThemeSource(): void {
+    nativeTheme.themeSource = this.settings.theme;
   }
 
   private applyLoginItemSettings(): void {

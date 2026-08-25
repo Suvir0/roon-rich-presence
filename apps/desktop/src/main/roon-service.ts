@@ -4,6 +4,7 @@ import { createConnection, isIPv4 } from 'node:net';
 import { networkInterfaces } from 'node:os';
 import { reduceZoneEvent, type PlaybackState, type RoonZone, type ZoneMap } from '@rrp/core';
 import type { ConnectionStatus } from '../shared/contracts';
+import { projectIdentity } from './identity';
 import { RoonDiscovery, type RoonDiscoveredEndpoint } from './roon-discovery';
 
 const require = createRequire(import.meta.url);
@@ -214,14 +215,15 @@ export class RoonService {
     this.retryTimers.clear();
     this.manualFallbackStopped = false;
     this.discoveryPolicyFailures = 0;
+    const identity = projectIdentity();
     const roon = this.dependencies.createRoon({
       log_level: 'none',
-      extension_id: process.env.ROON_EXTENSION_ID ?? 'io.github.suvir0.roon-rich-presence',
+      extension_id: identity.roonExtensionId,
       display_name: 'Roon Rich Presence',
       display_version: app.getVersion(),
-      publisher: process.env.PROJECT_PUBLISHER ?? 'Suvir Potdar',
-      email: process.env.PROJECT_SUPPORT_EMAIL ?? 'hello@suvir.net',
-      website: process.env.PROJECT_CONTACT_URL ?? 'https://github.com/Suvir0/roon-rich-presence',
+      publisher: identity.publisher,
+      email: identity.supportEmail,
+      website: identity.contactUrl,
       force_server: true,
       get_persisted_state: () => this.store.getRoonState(),
       set_persisted_state: (state: Record<string, unknown>) => this.store.setRoonState(state),

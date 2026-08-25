@@ -7,17 +7,19 @@ describe('sanitizeSettings', () => {
     expect(DEFAULT_SETTINGS.schemaVersion).toBe(2);
   });
 
-  it('defaults to the light theme', () => {
-    expect(DEFAULT_SETTINGS.theme).toBe('light');
+  it('follows the display until a theme is chosen', () => {
+    expect(DEFAULT_SETTINGS.theme).toBe('system');
   });
 
-  it('accepts a saved dark theme', () => {
+  it('keeps an explicitly saved theme', () => {
     expect(sanitizeSettings({ theme: 'dark' }).theme).toBe('dark');
+    expect(sanitizeSettings({ theme: 'light' }).theme).toBe('light');
+    expect(sanitizeSettings({ theme: 'system' }).theme).toBe('system');
   });
 
   it('falls back to the default theme for an invalid value', () => {
-    expect(sanitizeSettings({ theme: 'blue' }).theme).toBe('light');
-    expect(sanitizeSettings({ theme: 1 }).theme).toBe('light');
+    expect(sanitizeSettings({ theme: 'blue' }).theme).toBe('system');
+    expect(sanitizeSettings({ theme: 1 }).theme).toBe('system');
   });
 
   it('migrates version 1 settings to host-only connection without losing preferences', () => {

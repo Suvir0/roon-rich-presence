@@ -2,7 +2,7 @@ import type { AppSettings, AppSettingsPatch } from '../shared/contracts';
 
 export const DEFAULT_SETTINGS: AppSettings = {
   schemaVersion: 2,
-  theme: 'light',
+  theme: 'system',
   presenceEnabled: true,
   zoneMode: 'selected',
   showAlbum: true,
@@ -35,7 +35,7 @@ export function sanitizeSettings(input: unknown): AppSettings {
   for (const key of booleans) {
     if (typeof value[key] === 'boolean') settings[key] = value[key];
   }
-  if (value.theme === 'light' || value.theme === 'dark') {
+  if (value.theme === 'light' || value.theme === 'dark' || value.theme === 'system') {
     settings.theme = value.theme;
   }
   // Unsigned beta builds use manual downloads because macOS auto-update
@@ -85,7 +85,7 @@ const PATCH_VALIDATORS: Record<string, PatchValidator> = {
   ...Object.fromEntries(
     PATCH_BOOLEAN_KEYS.map((key) => [key, (value) => typeof value === 'boolean'])
   ),
-  theme: (value) => value === 'light' || value === 'dark',
+  theme: (value) => value === 'light' || value === 'dark' || value === 'system',
   zoneMode: (value) => value === 'selected' || value === 'automatic',
   selectedZoneId: (value) => typeof value === 'string' && value.length >= 1 && value.length <= 256,
   manualRoonHost: (value) => typeof value === 'string' && value.length <= 253,

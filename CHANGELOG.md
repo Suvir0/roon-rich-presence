@@ -4,6 +4,9 @@ This project follows semantic versioning. Dates use the ISO 8601 format.
 
 ## Unreleased
 
+- Redesigned the application icon in the Classical style: an ink plate with the gold double rule of the interface and the same waveform mark the app uses as its brand. `scripts/build-app-icons.mjs` regenerates the macOS, Windows, and Linux icon files from the single SVG source
+- Added a **Match display** theme that follows the operating system, alongside Light and Dark. The header control now cycles the three, and new installs follow the display by default. A theme chosen earlier is kept
+- Fixed placeholder project identity reaching users when a local `.env` was copied from an older template. Roon showed `PROJECT_PUBLISHER` as the extension publisher, and MusicBrainz received a `PROJECT_OWNER` contact URL in the User-Agent. Placeholder-shaped values are now rejected in favour of the frozen project identity
 - Added a test suite for the Discord bridge supervisor, which had none: backend verification (a development stub is refused), NDJSON framing across chunk boundaries, oversized input and output bounds, malformed output, restart backoff, and shutdown. The bridge now takes its process spawner and executable lookup as injectable dependencies so this is testable; the defaults are unchanged
 - Added coverage reporting to both workspaces (`npm run test:coverage`) with thresholds enforced in the Test workflow. The Electron main, preload, and renderer entry points are excluded because the runner cannot instantiate them; they stay covered by the manual test matrix
 - Added recovery after the computer wakes. A Roon socket that dies while the machine is suspended does not always report a close, so the app now verifies the paired endpoint on resume and restarts discovery when it no longer answers, and republishes the current activity in case Discord dropped it. Screen unlock is handled too, debounced so a wake recovers only once

@@ -6,6 +6,7 @@ import {
   ipcMain,
   Menu,
   nativeImage,
+  nativeTheme,
   powerMonitor,
   protocol,
   session,
@@ -17,7 +18,7 @@ import {
 import electronUpdater from 'electron-updater';
 import { readFile } from 'node:fs/promises';
 import { extname, join } from 'node:path';
-import { IPC_CHANNELS, type AppSnapshot } from '../shared/contracts';
+import { IPC_CHANNELS, type AppSnapshot, type ResolvedTheme } from '../shared/contracts';
 import { AppController } from './app-controller';
 import { parseSettingsPatch } from './defaults';
 import { beginVisibleNetworkAccess, requestLocalNetworkAccess } from './local-network';
@@ -66,7 +67,7 @@ let localNetworkAccessRequest: Promise<void> | undefined;
 
 // Mirrors the --color-bg token for each theme in styles.css, so the window
 // never flashes the wrong background color while the renderer loads.
-const BACKGROUND_BY_THEME: Record<'light' | 'dark', string> = {
+const BACKGROUND_BY_THEME: Record<ResolvedTheme, string> = {
   light: '#f3f2f2',
   dark: '#1c1a17'
 };
@@ -187,7 +188,7 @@ function showWindow(): void {
 }
 
 function createWindow(): BrowserWindow {
-  const theme = controller?.getSnapshot().settings.theme ?? 'light';
+  const theme = controller?.getSnapshot().resolvedTheme ?? 'light';
   const created = new BrowserWindow({
     width: 1040,
     height: 880,
@@ -342,12 +343,14 @@ async function start(): Promise<void> {
     rebuildTray(snapshot);
     if (window && !window.isDestroyed()) {
       window.webContents.send(IPC_CHANNELS.snapshot, snapshot);
-      window.setBackgroundColor(BACKGROUND_BY_THEME[snapshot.settings.theme]);
+      window.setBackgroundColor(BACKGROUND_BY_THEME[snapshot.resolvedTheme]);
     }
   });
   // A suspended machine can leave both the Roon socket and the Discord client
   // dead without either reporting a close. Windows does not always raise `resume`
   // for a screen lock, so both events feed the same debounced recovery.
+  // Following the OS appearance means reacting to it changing while running.
+  nativeTheme.on('updated', () => controller?.handleNativeThemeChange());
   const recoverAfterWake = (): void => void controller?.handleSystemResume();
   powerMonitor.on('resume', recoverAfterWake);
   powerMonitor.on('unlock-screen', recoverAfterWake);
