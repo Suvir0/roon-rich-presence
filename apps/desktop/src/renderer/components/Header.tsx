@@ -1,18 +1,26 @@
-import { Icon } from './Icon';
+import { Icon, type IconName } from './Icon';
 import { StatusRow } from './StatusRow';
 import { STATUS_DOT, STATUS_LABEL } from '../labels';
 import type { UiSnapshot } from '../snapshot';
+import { nextThemeMode, THEME_LABEL } from '../theme';
+import type { ThemeMode } from '../../shared/contracts';
+
+const THEME_ICON: Record<ThemeMode, IconName> = {
+  light: 'sun',
+  dark: 'moon',
+  system: 'display'
+};
 
 export function Header({
   snapshot,
   onTogglePresence,
-  onToggleTheme
+  onCycleTheme
 }: {
   snapshot: UiSnapshot;
   onTogglePresence: () => void;
-  onToggleTheme: () => void;
+  onCycleTheme: () => void;
 }) {
-  const dark = snapshot.settings.theme === 'dark';
+  const { theme } = snapshot.settings;
   return (
     <header className="topbar">
       <span className="brand">
@@ -34,10 +42,13 @@ export function Header({
       </span>
       <button
         className="btn btn-icon theme-toggle"
-        aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'}
-        onClick={onToggleTheme}
+        aria-label={`Theme: ${THEME_LABEL[theme]}. Switch to ${THEME_LABEL[
+          nextThemeMode(theme)
+        ].toLowerCase()}.`}
+        title={`Theme: ${THEME_LABEL[theme]}`}
+        onClick={onCycleTheme}
       >
-        <Icon name={dark ? 'sun' : 'moon'} />
+        <Icon name={THEME_ICON[theme]} />
       </button>
       <button
         className="btn btn-primary"

@@ -12,31 +12,19 @@ export interface PlaybackState {
   imageKey?: string;
 }
 
-export interface AppSettings {
+/** The presence-relevant subset of application settings consumed by `mapPresence`. */
+export interface PresenceSettings {
   presenceEnabled: boolean;
-  zoneMode: 'selected' | 'automatic';
-  selectedZoneId?: string;
   showAlbum: boolean;
   showProgress: boolean;
   showZone: boolean;
   showWhenPaused: boolean;
-  artworkLookupEnabled: boolean;
-  startAtLogin: boolean;
-  launchHidden: boolean;
-  automaticUpdates: boolean;
 }
 
-export type ServiceStatus = 'connected' | 'connecting' | 'disconnected' | 'error';
-
-export interface AppSnapshot {
-  settings: AppSettings;
-  zones: PlaybackState[];
-  activeZoneId?: string;
-  playback?: PlaybackState;
-  roonStatus: ServiceStatus;
-  discordStatus: ServiceStatus;
-  artworkStatus: 'disabled' | 'idle' | 'loading' | 'matched' | 'unavailable';
-  secureStorageAvailable: boolean;
+/** The zone-relevant subset of application settings consumed by `selectActiveZone`. */
+export interface ZoneSelectionSettings {
+  zoneMode: 'selected' | 'automatic';
+  selectedZoneId?: string;
 }
 
 export interface ActivityTimestamps {

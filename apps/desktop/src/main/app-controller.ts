@@ -1,7 +1,6 @@
-import { app } from 'electron';
+import { app, nativeTheme } from 'electron';
 import {
   EMPTY_THROTTLE_STATE,
-  flushPendingPresence,
   mapPresence,
   planPresenceUpdate,
   selectActiveZone,
@@ -16,6 +15,7 @@ import type {
   AppSnapshot,
   PlaybackState,
   PresencePreview,
+  ResolvedTheme,
   ZoneSummary
 } from '../shared/contracts';
 import { ArtworkService } from './artwork-service';
@@ -25,6 +25,8 @@ import { SettingsStore } from './settings-store';
 
 const MAX_DIAGNOSTICS = 100;
 const FORGET_DEBOUNCE_MS = 1_500;
+// A wake can raise both `resume` and `unlock-screen` within a second of each other.
+const RESUME_DEBOUNCE_MS = 5_000;
 const ARTWORK_RETRY_DELAYS_MS = [5_000, 15_000, 60_000] as const;
 // Rotate the log file when it grows beyond this size (bytes) to keep it bounded.
 const LOG_MAX_BYTES = 512_000;
@@ -160,12 +162,14 @@ export class AppController {
   private diagnostics: string[] = [];
   private listeners = new Set<(snapshot: AppSnapshot) => void>();
   private lastForgetAt = 0;
+  private lastResumeAt = 0;
   private connectivityStarted = false;
   private readonly logPath = join(app.getPath('userData'), 'main.log');
   private readonly diagnosticLog = new BoundedDiagnosticLog(this.logPath);
 
   async initialize(): Promise<void> {
     this.settings = this.settingsStore.load();
+    this.applyThemeSource();
     // Logging must never prevent the app from reaching the UI.
     await this.diagnosticLog.initialize().catch(() => undefined);
     await this.artwork.initialize();
@@ -198,6 +202,7 @@ export class AppController {
     return {
       version: app.getVersion(),
       settings: { ...this.settings },
+      resolvedTheme: this.getResolvedTheme(),
       ...(this.playback
         ? {
             playback: {
@@ -225,6 +230,7 @@ export class AppController {
     const oldManual = this.getManualRoonAddress();
     this.settings = this.settingsStore.update(patch);
     this.applyLoginItemSettings();
+    this.applyThemeSource();
     if (patch.zoneMode === 'automatic' || patch.zoneMode === 'selected') {
       this.automaticZoneId = undefined;
     }
@@ -252,6 +258,23 @@ export class AppController {
     if (this.connectivityStarted) this.roon.start();
     this.log('Roon authorization and manual server override were forgotten');
     return this.getSnapshot();
+  }
+
+  /**
+   * Re-establishes Roon and Discord state after the host machine wakes. Both
+   * connections can be dead without either side having reported a close.
+   */
+  async handleSystemResume(): Promise<void> {
+    const now = Date.now();
+    if (now - this.lastResumeAt < RESUME_DEBOUNCE_MS) return;
+    this.lastResumeAt = now;
+    this.log('System resumed; verifying Roon and Discord connections');
+    if (this.connectivityStarted) await this.roon.recover(this.getManualRoonAddress());
+    // Discord may have dropped the activity while suspended. Clearing the last
+    // published fingerprint makes the next plan republish the current card.
+    this.throttle = { ...EMPTY_THROTTLE_STATE };
+    this.publishPresence();
+    this.emit();
   }
 
   getRedactedDiagnostics(): string {
@@ -438,17 +461,39 @@ export class AppController {
     this.throttle = planned.state;
     if (planned.dispatch) this.discord.setPresence(planned.dispatch);
     if (this.throttleTimer) clearTimeout(this.throttleTimer);
+    delete this.throttleTimer;
     if (planned.nextEligibleAtMs) {
+      // Recompute instead of dispatching the queued payload: by the time the rate
+      // limit window opens its timestamps are up to 20 seconds old, which would
+      // publish a progress bar that is visibly behind the music.
       this.throttleTimer = setTimeout(
         () => {
-          const flushed = flushPendingPresence(this.throttle, Date.now());
-          this.throttle = flushed.state;
-          if (flushed.dispatch) this.discord.setPresence(flushed.dispatch);
+          delete this.throttleTimer;
+          this.publishPresence();
+          this.emit();
         },
         Math.max(0, planned.nextEligibleAtMs - Date.now())
       );
       this.throttleTimer.unref();
     }
+  }
+
+  /** Republishes the snapshot when the operating system switches appearance. */
+  handleNativeThemeChange(): void {
+    if (this.settings?.theme === 'system') this.emit();
+  }
+
+  private getResolvedTheme(): ResolvedTheme {
+    if (this.settings.theme !== 'system') return this.settings.theme;
+    return nativeTheme.shouldUseDarkColors ? 'dark' : 'light';
+  }
+
+  /**
+   * Electron owns the resolution of `system`, and driving themeSource also keeps
+   * native surfaces (menus, dialogs, scrollbars) aligned with the chosen mode.
+   */
+  private applyThemeSource(): void {
+    nativeTheme.themeSource = this.settings.theme;
   }
 
   private applyLoginItemSettings(): void {

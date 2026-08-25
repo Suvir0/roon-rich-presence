@@ -6,6 +6,7 @@ import {
   selectMusicBrainzReleaseGroup
 } from '@rrp/core';
 import { copyFile, mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
+import { projectIdentity } from './identity';
 import { dirname, join } from 'node:path';
 
 interface CacheEntry {
@@ -22,7 +23,6 @@ interface MusicBrainzReleaseGroup {
   title?: unknown;
   score?: unknown;
   'artist-credit'?: unknown;
-  'cover-art-archive'?: unknown;
 }
 
 interface CoverArtArchiveImage {
@@ -134,8 +134,7 @@ export class ArtworkService {
     url.searchParams.set('query', query);
     url.searchParams.set('fmt', 'json');
     url.searchParams.set('limit', '5');
-    const contact =
-      process.env.PROJECT_CONTACT_URL ?? 'https://github.com/Suvir0/roon-rich-presence';
+    const contact = projectIdentity().contactUrl;
 
     let groups: MusicBrainzReleaseGroup[] | undefined;
     for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -185,9 +184,7 @@ export class ArtworkService {
                 id: group.id,
                 title: group.title,
                 artists: getArtistCredits(group['artist-credit']),
-                score: Number(group.score ?? 0),
-                // Search responses omit this field; CAA is queried below.
-                hasFrontArtwork: false
+                score: Number(group.score ?? 0)
               }
             ]
           : []

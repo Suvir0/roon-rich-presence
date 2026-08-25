@@ -31,7 +31,9 @@ export interface ZoneSummary {
   state: PlaybackStatus;
 }
 
-export type ThemeMode = 'light' | 'dark';
+/** `system` follows the operating system's light/dark appearance. */
+export type ThemeMode = 'light' | 'dark' | 'system';
+export type ResolvedTheme = 'light' | 'dark';
 
 export interface AppSettings {
   schemaVersion: 2;
@@ -71,6 +73,8 @@ export interface PresencePreview {
 export interface AppSnapshot {
   version: string;
   settings: AppSettings;
+  /** `settings.theme` with `system` resolved against the current OS appearance. */
+  resolvedTheme: ResolvedTheme;
   playback?: PlaybackState;
   zones: ZoneSummary[];
   activeZoneId?: string;

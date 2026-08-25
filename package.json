@@ -24,6 +24,7 @@
     "lint": "eslint . --max-warnings=0",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm run build -w @rrp/core && npm test --workspaces --if-present",
+    "test:coverage": "npm run build -w @rrp/core && npm run test:coverage --workspaces --if-present",
     "build": "npm run build -w @rrp/core && npm run build -w @rrp/desktop",
     "audit:prod": "npm audit --omit=dev --audit-level=high",
     "secrets:check": "node scripts/check-sensitive-files.mjs",

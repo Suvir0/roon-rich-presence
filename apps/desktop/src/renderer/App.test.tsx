@@ -8,6 +8,7 @@ import App from './App';
 
 const snapshot = (onboardingComplete: boolean) => ({
   version: '0.1.0',
+  resolvedTheme: 'light' as const,
   settings: {
     schemaVersion: 2 as const,
     theme: 'light' as const,
@@ -65,7 +66,9 @@ function installApi(onboardingComplete: boolean) {
         settings.manualRoonPort = manualRoonPort as number;
       }
     }
-    current = { ...current, settings };
+    // The main process resolves `system` against the OS; jsdom reports light.
+    const resolvedTheme = settings.theme === 'system' ? 'light' : settings.theme;
+    current = { ...current, settings, resolvedTheme };
     return Promise.resolve(current);
   });
   const completeOnboarding = vi.fn().mockResolvedValue(snapshot(true));
@@ -454,13 +457,22 @@ describe('renderer experience', () => {
     expect(container.textContent).toContain('Set up Roon Presence');
   });
 
-  it('toggles the theme and applies it to the document root', async () => {
+  it('cycles light, dark, and match display, applying each to the document root', async () => {
     const { updateSettings } = installApi(true);
     await renderApp();
     expect(document.documentElement.dataset.theme).toBe('light');
 
-    await click(button(/switch to dark theme/i));
-    expect(updateSettings).toHaveBeenCalledWith({ theme: 'dark' });
+    await click(button(/switch to dark/i));
+    expect(updateSettings).toHaveBeenLastCalledWith({ theme: 'dark' });
     expect(document.documentElement.dataset.theme).toBe('dark');
+
+    await click(button(/switch to match display/i));
+    expect(updateSettings).toHaveBeenLastCalledWith({ theme: 'system' });
+    // `system` is whatever the main process resolved, not the mode name.
+    expect(document.documentElement.dataset.theme).toBe('light');
+
+    await click(button(/switch to light/i));
+    expect(updateSettings).toHaveBeenLastCalledWith({ theme: 'light' });
+    expect(document.documentElement.dataset.theme).toBe('light');
   });
 });

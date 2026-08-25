@@ -14,6 +14,12 @@ export interface DiscordBridgeSnapshot {
   message: string;
 }
 
+interface DiscordBridgeDependencies {
+  spawn: typeof spawn;
+  /** Absolute path of the bridge executable, or undefined when none is installed. */
+  resolveExecutable(): string | undefined;
+}
+
 export class DiscordBridge {
   private child: ChildProcessWithoutNullStreams | undefined;
   private stopping = false;
@@ -27,14 +33,23 @@ export class DiscordBridge {
     message: 'Discord bridge has not started'
   };
 
+  private readonly dependencies: DiscordBridgeDependencies;
+
   constructor(
     private readonly onChange: (snapshot: DiscordBridgeSnapshot) => void,
-    private readonly log: (message: string) => void
-  ) {}
+    private readonly log: (message: string) => void,
+    dependencies: Partial<DiscordBridgeDependencies> = {}
+  ) {
+    this.dependencies = {
+      spawn,
+      resolveExecutable: () => resolveBundledExecutable(),
+      ...dependencies
+    };
+  }
 
   start(): void {
     if (this.child || this.stopping) return;
-    const executable = this.resolveExecutable();
+    const executable = this.dependencies.resolveExecutable();
     if (!executable) {
       this.setSnapshot({
         status: 'waiting',
@@ -52,7 +67,7 @@ export class DiscordBridge {
       return;
     }
     this.setSnapshot({ status: 'searching', message: 'Connecting to the Discord desktop client…' });
-    const child = spawn(executable, ['--application-id', applicationId], {
+    const child = this.dependencies.spawn(executable, ['--application-id', applicationId], {
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
       env: { ...process.env, DISCORD_APPLICATION_ID: applicationId }
@@ -111,21 +126,6 @@ export class DiscordBridge {
       forceTimer.unref();
     }
     this.setSnapshot({ status: 'idle', message: 'Discord presence stopped' });
-  }
-
-  private resolveExecutable(): string | undefined {
-    const override = process.env.DISCORD_BRIDGE_PATH;
-    if (!app.isPackaged && override && isAbsolute(override) && isRegularFile(override)) {
-      return override;
-    }
-    const name = process.platform === 'win32' ? 'discord-bridge.exe' : 'discord-bridge';
-    const candidates = app.isPackaged
-      ? [join(process.resourcesPath, 'discord-bridge', name)]
-      : [
-          resolve(app.getAppPath(), '../../native/discord-bridge/build', name),
-          resolve(app.getAppPath(), '../../native/discord-bridge/build/Release', name)
-        ];
-    return candidates.find((candidate) => isRegularFile(candidate));
   }
 
   private write(payload: object): void {
@@ -254,6 +254,21 @@ export class DiscordBridge {
     this.snapshot = snapshot;
     this.onChange(this.getSnapshot());
   }
+}
+
+function resolveBundledExecutable(): string | undefined {
+  const override = process.env.DISCORD_BRIDGE_PATH;
+  if (!app.isPackaged && override && isAbsolute(override) && isRegularFile(override)) {
+    return override;
+  }
+  const name = process.platform === 'win32' ? 'discord-bridge.exe' : 'discord-bridge';
+  const candidates = app.isPackaged
+    ? [join(process.resourcesPath, 'discord-bridge', name)]
+    : [
+        resolve(app.getAppPath(), '../../native/discord-bridge/build', name),
+        resolve(app.getAppPath(), '../../native/discord-bridge/build/Release', name)
+      ];
+  return candidates.find((candidate) => isRegularFile(candidate));
 }
 
 function isRegularFile(path: string): boolean {

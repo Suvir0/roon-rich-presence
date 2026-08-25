@@ -174,6 +174,10 @@ interface FakeDiscoveryOptions {
 function createServiceHarness(options?: {
   cached?: { host: string; port: number };
   probePorts?: (onOpen: (port: number) => void) => Promise<number[]>;
+  testEndpoint?: (
+    host: string,
+    port: number
+  ) => Promise<{ ok: true } | { ok: false; code?: string }>;
 }) {
   const apiOptions: FakeRoonOptions[] = [];
   const roons: {
@@ -228,7 +232,8 @@ function createServiceHarness(options?: {
       discoveries.push(discovery);
       return discovery;
     },
-    testEndpoint: async () => ({ ok: true }),
+    testEndpoint: async (host, port) =>
+      options?.testEndpoint ? options.testEndpoint(host, port) : { ok: true },
     probePorts: async (_host, _ports, _concurrency, _timeout, _continue, onOpen) =>
       options?.probePorts ? options.probePorts(onOpen) : []
   });
@@ -241,6 +246,20 @@ function createServiceHarness(options?: {
     setLastRoonEndpoint,
     snapshots
   };
+}
+
+async function pairedHarness(
+  options?: Parameters<typeof createServiceHarness>[0]
+): Promise<ReturnType<typeof createServiceHarness>> {
+  const harness = createServiceHarness(options);
+  harness.service.start({ host: 'roon.local', port: 9330 });
+  await settleAsyncWork();
+  harness.roons[0]?.requests[0]?.transport.onopen();
+  harness.apiOptions[0]?.core_paired({
+    display_name: 'Test Core',
+    services: { RoonApiTransport: { subscribe_zones: vi.fn() } }
+  });
+  return harness;
 }
 
 async function settleAsyncWork(): Promise<void> {
@@ -376,6 +395,104 @@ describe('RoonService connection integration', () => {
       host: '192.168.50.2',
       port: 9488
     });
+    harness.service.stop();
+    vi.useRealTimers();
+  });
+});
+
+describe('RoonService wake recovery', () => {
+  it('keeps a paired connection whose endpoint still answers', async () => {
+    vi.useFakeTimers();
+    const probed: [string, number][] = [];
+    const harness = await pairedHarness({
+      testEndpoint: async (host, port) => {
+        probed.push([host, port]);
+        return { ok: true };
+      }
+    });
+    probed.length = 0;
+
+    await harness.service.recover({ host: 'roon.local', port: 9330 });
+    await vi.advanceTimersByTimeAsync(400);
+    await settleAsyncWork();
+
+    expect(probed).toEqual([['roon.local', 9330]]);
+    expect(harness.roons).toHaveLength(1);
+    expect(harness.service.getSnapshot()).toMatchObject({ status: 'connected' });
+    harness.service.stop();
+    vi.useRealTimers();
+  });
+
+  it('restarts a paired connection whose socket died while suspended', async () => {
+    vi.useFakeTimers();
+    let reachable = true;
+    const harness = await pairedHarness({
+      testEndpoint: async () => (reachable ? { ok: true } : { ok: false, code: 'ETIMEDOUT' })
+    });
+    reachable = false;
+
+    await harness.service.recover({ host: 'roon.local', port: 9330 });
+    // The wake probe found the socket dead; the endpoint itself is back afterwards.
+    reachable = true;
+    await vi.advanceTimersByTimeAsync(400);
+    await settleAsyncWork();
+
+    expect(harness.roons).toHaveLength(2);
+    expect(harness.roons[1]?.requests[0]?.options).toMatchObject({
+      host: 'roon.local',
+      port: 9330
+    });
+    harness.service.stop();
+    vi.useRealTimers();
+  });
+
+  it('restarts an unpaired search without waiting out its retry backoff', async () => {
+    vi.useFakeTimers();
+    const harness = createServiceHarness();
+    harness.service.start({ host: 'roon.local', port: 9330 });
+    await settleAsyncWork();
+
+    await harness.service.recover({ host: 'roon.local', port: 9330 });
+    await vi.advanceTimersByTimeAsync(400);
+    await settleAsyncWork();
+
+    expect(harness.roons).toHaveLength(2);
+    harness.service.stop();
+    vi.useRealTimers();
+  });
+
+  it('does nothing when connectivity was never started', async () => {
+    const harness = createServiceHarness();
+    await harness.service.recover();
+    expect(harness.roons).toHaveLength(0);
+    expect(harness.service.getSnapshot()).toMatchObject({ status: 'idle' });
+  });
+
+  it('ignores a reachability result that arrives after another restart', async () => {
+    vi.useFakeTimers();
+    const held: ((value: { ok: true } | { ok: false; code?: string }) => void)[] = [];
+    let holdNextProbe = false;
+    const harness = await pairedHarness({
+      testEndpoint: () => {
+        if (!holdNextProbe) return Promise.resolve({ ok: true });
+        holdNextProbe = false;
+        return new Promise((resolve) => held.push(resolve));
+      }
+    });
+
+    holdNextProbe = true;
+    const recovery = harness.service.recover({ host: 'roon.local', port: 9330 });
+    harness.service.restart({ host: 'other.local', port: 9444 });
+    await vi.advanceTimersByTimeAsync(400);
+    await settleAsyncWork();
+    held[0]?.({ ok: false, code: 'ETIMEDOUT' });
+    await recovery;
+    await vi.advanceTimersByTimeAsync(400);
+    await settleAsyncWork();
+
+    // The stale probe must not restart on top of the connection that replaced it.
+    expect(harness.roons).toHaveLength(2);
+    expect(harness.roons[1]?.requests[0]?.options).toMatchObject({ host: 'other.local' });
     harness.service.stop();
     vi.useRealTimers();
   });

@@ -1,6 +1,7 @@
 import type {
   AppSnapshot,
   ConnectionStatus,
+  ResolvedTheme,
   RoonConnectionReason,
   ThemeMode
 } from '../shared/contracts';
@@ -42,6 +43,8 @@ export interface UiSettings {
 export interface UiSnapshot {
   onboardingComplete: boolean;
   settings: UiSettings;
+  /** The theme actually in force, with `system` already resolved by the main process. */
+  resolvedTheme: ResolvedTheme;
   roon: { status: ConnectionStatus; message: string; reason: RoonConnectionReason | undefined };
   discord: { status: ConnectionStatus; message: string };
   artwork: ConnectionStatus;
@@ -66,8 +69,9 @@ export interface UiSnapshot {
 
 export const EMPTY_SNAPSHOT: UiSnapshot = {
   onboardingComplete: false,
+  resolvedTheme: 'light',
   settings: {
-    theme: 'light',
+    theme: 'system',
     presenceEnabled: true,
     zoneMode: 'selected',
     selectedZoneId: undefined,
@@ -95,6 +99,7 @@ export function toUiSnapshot(snapshot: AppSnapshot): UiSnapshot {
   const { settings } = snapshot;
   return {
     onboardingComplete: settings.onboardingComplete,
+    resolvedTheme: snapshot.resolvedTheme,
     settings: {
       theme: settings.theme,
       presenceEnabled: settings.presenceEnabled,

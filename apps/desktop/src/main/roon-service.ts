@@ -4,6 +4,7 @@ import { createConnection, isIPv4 } from 'node:net';
 import { networkInterfaces } from 'node:os';
 import { reduceZoneEvent, type PlaybackState, type RoonZone, type ZoneMap } from '@rrp/core';
 import type { ConnectionStatus } from '../shared/contracts';
+import { projectIdentity } from './identity';
 import { RoonDiscovery, type RoonDiscoveredEndpoint } from './roon-discovery';
 
 const require = createRequire(import.meta.url);
@@ -214,14 +215,15 @@ export class RoonService {
     this.retryTimers.clear();
     this.manualFallbackStopped = false;
     this.discoveryPolicyFailures = 0;
+    const identity = projectIdentity();
     const roon = this.dependencies.createRoon({
       log_level: 'none',
-      extension_id: process.env.ROON_EXTENSION_ID ?? 'io.github.suvir0.roon-rich-presence',
+      extension_id: identity.roonExtensionId,
       display_name: 'Roon Rich Presence',
       display_version: app.getVersion(),
-      publisher: process.env.PROJECT_PUBLISHER ?? 'Suvir Potdar',
-      email: process.env.PROJECT_SUPPORT_EMAIL ?? 'hello@suvir.net',
-      website: process.env.PROJECT_CONTACT_URL ?? 'https://github.com/Suvir0/roon-rich-presence',
+      publisher: identity.publisher,
+      email: identity.supportEmail,
+      website: identity.contactUrl,
       force_server: true,
       get_persisted_state: () => this.store.getRoonState(),
       set_persisted_state: (state: Record<string, unknown>) => this.store.setRoonState(state),
@@ -323,6 +325,32 @@ export class RoonService {
       this.start(manual);
     }, RESTART_DELAY_MS);
     this.restartTimer.unref();
+  }
+
+  /**
+   * Re-establishes the connection after the host machine wakes. A socket that died
+   * while the machine was suspended does not reliably deliver a close event, so a
+   * paired session is trusted only while its endpoint still answers. Anything else
+   * restarts, which also resets a retry backoff that may have grown during sleep.
+   */
+  async recover(manual?: { host: string; port?: number }): Promise<void> {
+    if (!this.roon) return;
+    const endpoint = this.paired
+      ? (this.activeAttempt?.endpoint ?? this.store.getLastRoonEndpoint?.())
+      : undefined;
+    if (endpoint) {
+      const generation = this.generation;
+      const reachability = await this.dependencies.testEndpoint(endpoint.host, endpoint.port);
+      if (generation !== this.generation) return;
+      if (reachability.ok) {
+        this.log('Roon connection still answered after the system resumed');
+        return;
+      }
+      this.log(
+        `Roon endpoint stopped answering after resume: ${reachability.code ?? 'unreachable'}`
+      );
+    }
+    this.restart(manual);
   }
 
   getSnapshot(): RoonServiceSnapshot {
