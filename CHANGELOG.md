@@ -4,6 +4,9 @@ This project follows semantic versioning. Dates use the ISO 8601 format.
 
 ## Unreleased
 
+- Fixed a seek not reaching Discord. Presence updates were deduplicated on everything except the timeline, so after seeking, the published progress stayed wrong until the track changed. A position jump of more than five seconds now republishes, while ordinary second-by-second ticks are still suppressed and rapid scrubbing is coalesced into one update
+- Fixed a paused track continuing to count up on Discord when **Show while paused** is enabled, and **Progress** turning off not taking effect until the next track. Both drop the timeline while leaving every other field identical, which the deduplication treated as no change
+- Changed a rate-limited presence update to be recomputed when the window reopens instead of publishing the payload queued up to 20 seconds earlier, whose progress was already stale
 - Removed unused settings, artwork-match, and artwork-cache exports from `@rrp/core`. The application had its own implementations of all of them, so the removed code was never reachable while its tests still reported coverage. `mapPresence` and `selectActiveZone` now take the narrow `PresenceSettings` and `ZoneSelectionSettings` inputs they actually read
 - Rebuilt the product site at [rrp.suvir.net](https://rrp.suvir.net) in the application's Classical design, using the same vendored Cormorant Garamond and Lora files, and replaced the illustrated presence mock-up with screenshots captured from a running build
 - Added `scripts/capture-app-screenshots.mjs`, which drives a running application build over the Chrome DevTools Protocol to regenerate every site screenshot in both themes

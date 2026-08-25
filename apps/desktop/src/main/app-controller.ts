@@ -1,7 +1,6 @@
 import { app } from 'electron';
 import {
   EMPTY_THROTTLE_STATE,
-  flushPendingPresence,
   mapPresence,
   planPresenceUpdate,
   selectActiveZone,
@@ -438,12 +437,16 @@ export class AppController {
     this.throttle = planned.state;
     if (planned.dispatch) this.discord.setPresence(planned.dispatch);
     if (this.throttleTimer) clearTimeout(this.throttleTimer);
+    delete this.throttleTimer;
     if (planned.nextEligibleAtMs) {
+      // Recompute instead of dispatching the queued payload: by the time the rate
+      // limit window opens its timestamps are up to 20 seconds old, which would
+      // publish a progress bar that is visibly behind the music.
       this.throttleTimer = setTimeout(
         () => {
-          const flushed = flushPendingPresence(this.throttle, Date.now());
-          this.throttle = flushed.state;
-          if (flushed.dispatch) this.discord.setPresence(flushed.dispatch);
+          delete this.throttleTimer;
+          this.publishPresence();
+          this.emit();
         },
         Math.max(0, planned.nextEligibleAtMs - Date.now())
       );
