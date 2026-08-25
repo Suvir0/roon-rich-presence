@@ -2,7 +2,7 @@
 
 This project follows semantic versioning. Dates use the ISO 8601 format.
 
-## Unreleased
+## 0.3.0 - 2026-08-25
 
 - Redesigned the application icon in the Classical style: an ink plate with the gold double rule of the interface and the same waveform mark the app uses as its brand. `scripts/build-app-icons.mjs` regenerates the macOS, Windows, and Linux icon files from the single SVG source
 - Added a **Match display** theme that follows the operating system, alongside Light and Dark. The header control now cycles the three, and new installs follow the display by default. A theme chosen earlier is kept
