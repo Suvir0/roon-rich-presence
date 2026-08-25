@@ -325,6 +325,32 @@ export class RoonService {
     this.restartTimer.unref();
   }
 
+  /**
+   * Re-establishes the connection after the host machine wakes. A socket that died
+   * while the machine was suspended does not reliably deliver a close event, so a
+   * paired session is trusted only while its endpoint still answers. Anything else
+   * restarts, which also resets a retry backoff that may have grown during sleep.
+   */
+  async recover(manual?: { host: string; port?: number }): Promise<void> {
+    if (!this.roon) return;
+    const endpoint = this.paired
+      ? (this.activeAttempt?.endpoint ?? this.store.getLastRoonEndpoint?.())
+      : undefined;
+    if (endpoint) {
+      const generation = this.generation;
+      const reachability = await this.dependencies.testEndpoint(endpoint.host, endpoint.port);
+      if (generation !== this.generation) return;
+      if (reachability.ok) {
+        this.log('Roon connection still answered after the system resumed');
+        return;
+      }
+      this.log(
+        `Roon endpoint stopped answering after resume: ${reachability.code ?? 'unreachable'}`
+      );
+    }
+    this.restart(manual);
+  }
+
   getSnapshot(): RoonServiceSnapshot {
     return { ...this.snapshot, zones: [...this.snapshot.zones] };
   }

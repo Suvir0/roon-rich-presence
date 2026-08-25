@@ -4,6 +4,7 @@ This project follows semantic versioning. Dates use the ISO 8601 format.
 
 ## Unreleased
 
+- Added recovery after the computer wakes. A Roon socket that dies while the machine is suspended does not always report a close, so the app now verifies the paired endpoint on resume and restarts discovery when it no longer answers, and republishes the current activity in case Discord dropped it. Screen unlock is handled too, debounced so a wake recovers only once
 - Fixed a seek not reaching Discord. Presence updates were deduplicated on everything except the timeline, so after seeking, the published progress stayed wrong until the track changed. A position jump of more than five seconds now republishes, while ordinary second-by-second ticks are still suppressed and rapid scrubbing is coalesced into one update
 - Fixed a paused track continuing to count up on Discord when **Show while paused** is enabled, and **Progress** turning off not taking effect until the next track. Both drop the timeline while leaving every other field identical, which the deduplication treated as no change
 - Changed a rate-limited presence update to be recomputed when the window reopens instead of publishing the payload queued up to 20 seconds earlier, whose progress was already stale

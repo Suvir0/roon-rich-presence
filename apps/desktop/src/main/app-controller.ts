@@ -24,6 +24,8 @@ import { SettingsStore } from './settings-store';
 
 const MAX_DIAGNOSTICS = 100;
 const FORGET_DEBOUNCE_MS = 1_500;
+// A wake can raise both `resume` and `unlock-screen` within a second of each other.
+const RESUME_DEBOUNCE_MS = 5_000;
 const ARTWORK_RETRY_DELAYS_MS = [5_000, 15_000, 60_000] as const;
 // Rotate the log file when it grows beyond this size (bytes) to keep it bounded.
 const LOG_MAX_BYTES = 512_000;
@@ -159,6 +161,7 @@ export class AppController {
   private diagnostics: string[] = [];
   private listeners = new Set<(snapshot: AppSnapshot) => void>();
   private lastForgetAt = 0;
+  private lastResumeAt = 0;
   private connectivityStarted = false;
   private readonly logPath = join(app.getPath('userData'), 'main.log');
   private readonly diagnosticLog = new BoundedDiagnosticLog(this.logPath);
@@ -251,6 +254,23 @@ export class AppController {
     if (this.connectivityStarted) this.roon.start();
     this.log('Roon authorization and manual server override were forgotten');
     return this.getSnapshot();
+  }
+
+  /**
+   * Re-establishes Roon and Discord state after the host machine wakes. Both
+   * connections can be dead without either side having reported a close.
+   */
+  async handleSystemResume(): Promise<void> {
+    const now = Date.now();
+    if (now - this.lastResumeAt < RESUME_DEBOUNCE_MS) return;
+    this.lastResumeAt = now;
+    this.log('System resumed; verifying Roon and Discord connections');
+    if (this.connectivityStarted) await this.roon.recover(this.getManualRoonAddress());
+    // Discord may have dropped the activity while suspended. Clearing the last
+    // published fingerprint makes the next plan republish the current card.
+    this.throttle = { ...EMPTY_THROTTLE_STATE };
+    this.publishPresence();
+    this.emit();
   }
 
   getRedactedDiagnostics(): string {

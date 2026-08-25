@@ -6,6 +6,7 @@ import {
   ipcMain,
   Menu,
   nativeImage,
+  powerMonitor,
   protocol,
   session,
   shell,
@@ -344,6 +345,12 @@ async function start(): Promise<void> {
       window.setBackgroundColor(BACKGROUND_BY_THEME[snapshot.settings.theme]);
     }
   });
+  // A suspended machine can leave both the Roon socket and the Discord client
+  // dead without either reporting a close. Windows does not always raise `resume`
+  // for a screen lock, so both events feed the same debounced recovery.
+  const recoverAfterWake = (): void => void controller?.handleSystemResume();
+  powerMonitor.on('resume', recoverAfterWake);
+  powerMonitor.on('unlock-screen', recoverAfterWake);
   tray = new Tray(createTrayIcon());
   if (process.platform === 'darwin') tray.setIgnoreDoubleClickEvents(true);
   tray.on('click', () => tray?.popUpContextMenu());
