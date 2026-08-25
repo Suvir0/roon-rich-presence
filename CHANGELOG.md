@@ -4,6 +4,8 @@ This project follows semantic versioning. Dates use the ISO 8601 format.
 
 ## Unreleased
 
+- Added a test suite for the Discord bridge supervisor, which had none: backend verification (a development stub is refused), NDJSON framing across chunk boundaries, oversized input and output bounds, malformed output, restart backoff, and shutdown. The bridge now takes its process spawner and executable lookup as injectable dependencies so this is testable; the defaults are unchanged
+- Added coverage reporting to both workspaces (`npm run test:coverage`) with thresholds enforced in the Test workflow. The Electron main, preload, and renderer entry points are excluded because the runner cannot instantiate them; they stay covered by the manual test matrix
 - Added recovery after the computer wakes. A Roon socket that dies while the machine is suspended does not always report a close, so the app now verifies the paired endpoint on resume and restarts discovery when it no longer answers, and republishes the current activity in case Discord dropped it. Screen unlock is handled too, debounced so a wake recovers only once
 - Fixed a seek not reaching Discord. Presence updates were deduplicated on everything except the timeline, so after seeking, the published progress stayed wrong until the track changed. A position jump of more than five seconds now republishes, while ordinary second-by-second ticks are still suppressed and rapid scrubbing is coalesced into one update
 - Fixed a paused track continuing to count up on Discord when **Show while paused** is enabled, and **Progress** turning off not taking effect until the next track. Both drop the timeline while leaving every other field identical, which the deduplication treated as no change
