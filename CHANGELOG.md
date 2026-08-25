@@ -4,6 +4,7 @@ This project follows semantic versioning. Dates use the ISO 8601 format.
 
 ## Unreleased
 
+- Removed unused settings, artwork-match, and artwork-cache exports from `@rrp/core`. The application had its own implementations of all of them, so the removed code was never reachable while its tests still reported coverage. `mapPresence` and `selectActiveZone` now take the narrow `PresenceSettings` and `ZoneSelectionSettings` inputs they actually read
 - Rebuilt the product site at [rrp.suvir.net](https://rrp.suvir.net) in the application's Classical design, using the same vendored Cormorant Garamond and Lora files, and replaced the illustrated presence mock-up with screenshots captured from a running build
 - Added `scripts/capture-app-screenshots.mjs`, which drives a running application build over the Chrome DevTools Protocol to regenerate every site screenshot in both themes
 - Documented the 0.2.0 feature set on the site, including theme switching, manual host and API port entry, opt-in artwork matching, and the separate Apple Silicon and Intel downloads

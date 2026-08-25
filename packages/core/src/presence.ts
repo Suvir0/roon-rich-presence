@@ -1,4 +1,4 @@
-import type { ActivityPayload, AppSettings, DesiredPresence, PlaybackState } from './types.js';
+import type { ActivityPayload, DesiredPresence, PlaybackState, PresenceSettings } from './types.js';
 
 const DISCORD_TEXT_LIMIT = 128;
 export const LOADING_GRACE_MS = 10_000;
@@ -22,7 +22,7 @@ export interface PresenceAssets {
 
 export function mapPresence(
   playback: PlaybackState | undefined,
-  settings: AppSettings,
+  settings: PresenceSettings,
   assets: PresenceAssets,
   nowMs: number,
   previous: PresenceMemory = {}
@@ -68,7 +68,7 @@ export function mapPresence(
 
 export function buildActivity(
   playback: PlaybackState,
-  settings: Pick<AppSettings, 'showAlbum' | 'showProgress' | 'showZone'>,
+  settings: Pick<PresenceSettings, 'showAlbum' | 'showProgress' | 'showZone'>,
   assets: PresenceAssets,
   nowMs: number
 ): ActivityPayload {

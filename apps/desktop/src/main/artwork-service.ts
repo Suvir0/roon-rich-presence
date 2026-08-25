@@ -22,7 +22,6 @@ interface MusicBrainzReleaseGroup {
   title?: unknown;
   score?: unknown;
   'artist-credit'?: unknown;
-  'cover-art-archive'?: unknown;
 }
 
 interface CoverArtArchiveImage {
@@ -185,9 +184,7 @@ export class ArtworkService {
                 id: group.id,
                 title: group.title,
                 artists: getArtistCredits(group['artist-credit']),
-                score: Number(group.score ?? 0),
-                // Search responses omit this field; CAA is queried below.
-                hasFrontArtwork: false
+                score: Number(group.score ?? 0)
               }
             ]
           : []

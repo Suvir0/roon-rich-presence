@@ -1,4 +1,4 @@
-import type { AppSettings, PlaybackState } from './types.js';
+import type { PlaybackState, ZoneSelectionSettings } from './types.js';
 
 /**
  * Automatic selection is sticky while its zone is paused/loading. A new zone is
@@ -6,7 +6,7 @@ import type { AppSettings, PlaybackState } from './types.js';
  */
 export function selectActiveZone(
   zones: readonly PlaybackState[],
-  settings: Pick<AppSettings, 'zoneMode' | 'selectedZoneId'>,
+  settings: ZoneSelectionSettings,
   previousAutomaticZoneId?: string
 ): PlaybackState | undefined {
   if (settings.zoneMode === 'selected') {

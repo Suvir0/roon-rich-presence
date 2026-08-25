@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_SETTINGS } from './settings.js';
 import { calculateTimestamps, mapPresence, truncateDiscordText } from './presence.js';
-import type { PlaybackState } from './types.js';
+import type { PlaybackState, PresenceSettings } from './types.js';
+
+const DEFAULT_SETTINGS: PresenceSettings = {
+  presenceEnabled: true,
+  showAlbum: true,
+  showProgress: true,
+  showZone: true,
+  showWhenPaused: false
+};
 
 const playback: PlaybackState = {
   zoneId: 'z',
