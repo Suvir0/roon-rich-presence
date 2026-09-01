@@ -263,7 +263,7 @@ jobs:
       - name: Create checksums
         run: find artifacts -type f ! -name SHA256SUMS.txt -print0 | sort -z | xargs -0 sha256sum > artifacts/SHA256SUMS.txt
       - name: Attest release artifacts
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: artifacts/**/*
       - name: Require an empty draft release asset namespace
